@@ -335,12 +335,15 @@ def main() -> None:
         if st.button("🚀 Analyze Resume", type="primary", use_container_width=True):
             with st.spinner("Processing document & running AI evaluation..."):
                 try:
-                    # Check session key if configured in sidebar
-                    custom_key = st.session_state.get("custom_api_key")
-                    analyzer = ResumeAnalyzer()
-                    if custom_key:
-                        from src.llm import GeminiClient
-                        analyzer.llm_client = GeminiClient(api_key=custom_key)
+                    # Check API Key from sidebar or .env config
+                    custom_key = st.session_state.get("custom_api_key") or config.GEMINI_API_KEY
+                    if not custom_key:
+                        st.error("🔑 **Gemini API Key missing.** Please enter your Gemini API key in the sidebar or add `GEMINI_API_KEY=your_key` to a `.env` file.")
+                        st.stop()
+
+                    from src.llm import GeminiClient
+                    llm_client = GeminiClient(api_key=custom_key)
+                    analyzer = ResumeAnalyzer(llm_client=llm_client)
 
                     # Trigger Analysis Pipeline
                     result = analyzer.analyze(
