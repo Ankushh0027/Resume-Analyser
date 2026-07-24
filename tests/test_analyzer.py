@@ -1,38 +1,44 @@
 """
-Unit Tests for ResumeAnalyzer Orchestrator
+Unit Tests for ResumeAnalyzer SaaS Orchestrator
 """
 
 import unittest
 from unittest.mock import MagicMock
 from src.analyzer import ResumeAnalyzer, AnalysisError
 from src.parser import ParsingError
-from src.llm import LLMError
+from src.services.ai_service import AIServiceError
 
 
 class TestResumeAnalyzer(unittest.TestCase):
-    """Test suite for ResumeAnalyzer facade class."""
+    """Test suite for ResumeAnalyzer SaaS facade class."""
 
     def setUp(self):
         self.mock_parser = MagicMock()
-        self.mock_llm = MagicMock()
+        self.mock_ai_service = MagicMock()
         self.analyzer = ResumeAnalyzer(
             parser=self.mock_parser,
-            llm_client=self.mock_llm,
+            ai_service=self.mock_ai_service,
         )
 
     def test_successful_analysis_workflow(self):
-        """Verify successful orchestration flow from text parsing to LLM result enrichment."""
+        """Verify successful orchestration flow from text parsing to AI result enrichment."""
         self.mock_parser.parse_file.return_value = "John Doe Python Developer text"
-        self.mock_llm.analyze_resume.return_value = {
-            "ats_score": 90,
-            "summary": "Great candidate",
-            "technical_skills": ["Python"],
-            "soft_skills": ["Communication"],
-            "missing_skills": [],
-            "strengths": ["Strong coding"],
-            "weaknesses": [],
-            "improvement_suggestions": [],
-        }
+        self.mock_ai_service.execute_ai_completion.return_value = (
+            {
+                "ats_score": 90,
+                "summary": "Great candidate",
+                "technical_skills": ["Python"],
+                "soft_skills": ["Communication"],
+                "missing_skills": [],
+                "strengths": ["Strong coding"],
+                "weaknesses": [],
+                "improvement_suggestions": [],
+            },
+            "Google Gemini",
+            "gemini-2.5-flash",
+            120,
+            "req_test123",
+        )
 
         result = self.analyzer.analyze(b"fake data", "resume.pdf", "Python Engineer")
 
@@ -41,24 +47,31 @@ class TestResumeAnalyzer(unittest.TestCase):
         self.assertEqual(result["meta"]["target_role"], "Python Engineer")
         self.assertEqual(result["meta"]["char_count"], 30)
         self.assertFalse(result["meta"]["has_jd"])
+        self.assertEqual(result["meta"]["provider_used"], "Google Gemini")
 
     def test_job_description_analysis_workflow(self):
         """Verify orchestration flow when job_description is provided."""
         self.mock_parser.parse_file.return_value = "Python developer resume text"
-        self.mock_llm.analyze_resume.return_value = {
-            "ats_score": 88,
-            "summary": "Fit candidate",
-            "technical_skills": ["Python"],
-            "soft_skills": [],
-            "missing_skills": [],
-            "strengths": [],
-            "weaknesses": [],
-            "improvement_suggestions": [],
-            "jd_match_score": 92,
-            "matching_keywords": ["Python", "FastAPI"],
-            "missing_jd_keywords": ["Docker"],
-            "jd_tailored_suggestions": ["Mention Docker projects"],
-        }
+        self.mock_ai_service.execute_ai_completion.return_value = (
+            {
+                "ats_score": 88,
+                "summary": "Fit candidate",
+                "technical_skills": ["Python"],
+                "soft_skills": [],
+                "missing_skills": [],
+                "strengths": [],
+                "weaknesses": [],
+                "improvement_suggestions": [],
+                "jd_match_score": 92,
+                "matching_keywords": ["Python", "FastAPI"],
+                "missing_jd_keywords": ["Docker"],
+                "jd_tailored_suggestions": ["Mention Docker projects"],
+            },
+            "Google Gemini",
+            "gemini-2.5-flash",
+            150,
+            "req_test456",
+        )
 
         result = self.analyzer.analyze(
             b"fake data",
@@ -76,10 +89,10 @@ class TestResumeAnalyzer(unittest.TestCase):
         with self.assertRaises(AnalysisError):
             self.analyzer.analyze(b"corrupted", "bad.pdf")
 
-    def test_llm_failure_raises_analysis_error(self):
-        """Verify that LLMError is wrapped in AnalysisError."""
+    def test_ai_service_failure_raises_analysis_error(self):
+        """Verify that AIServiceError is wrapped in AnalysisError."""
         self.mock_parser.parse_file.return_value = "Valid text"
-        self.mock_llm.analyze_resume.side_effect = LLMError("API rate limit")
+        self.mock_ai_service.execute_ai_completion.side_effect = AIServiceError("AI service busy")
         with self.assertRaises(AnalysisError):
             self.analyzer.analyze(b"valid", "good.pdf")
 

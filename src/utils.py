@@ -37,12 +37,13 @@ def is_valid_file_size(file_bytes: bytes) -> bool:
     return len(file_bytes) <= max_bytes
 
 
-def clean_text(text: str) -> str:
+def clean_text(text: str, max_chars: int = 8000) -> str:
     """
-    Sanitizes and cleans extracted text from documents.
+    Sanitizes, cleans, and extracts essential text from documents to optimize token usage.
 
     Args:
         text: Raw text string.
+        max_chars: Maximum allowed characters (defaults to 8000).
 
     Returns:
         str: Cleaned and normalized text string.
@@ -50,11 +51,32 @@ def clean_text(text: str) -> str:
     if not text:
         return ""
 
-    # Replace non-breaking spaces and normalize whitespace/newlines
-    text = text.replace("\xa0", " ")
-    text = re.sub(r"[ \t]+", " ", text)
-    text = re.sub(r"\n\s*\n+", "\n\n", text)
-    return text.strip()
+    # Replace non-breaking spaces and tabs
+    text = text.replace("\xa0", " ").replace("\t", " ")
+
+    # Remove decorative divider lines (e.g., ====, ----, ****, ____, ...., ~~~~, ####)
+    text = re.sub(r"^[=\-\*_~\.#]{3,}\s*$", "", text, flags=re.MULTILINE)
+
+    # Remove header/footer page numbering noise (e.g., "Page 1 of 3", "Page 2", "Page 1/2")
+    text = re.sub(r"(?i)\bpage\s+\d+(\s+(of|\/)\s+\d+)?\b", "", text)
+
+    # Standardize bullet symbols to clean hyphen
+    text = re.sub(r"[•▪►●]|-->", "-", text)
+
+    # Normalize inline whitespace on each line
+    lines = [re.sub(r"[ \t]+", " ", line).strip() for line in text.splitlines()]
+
+    # Filter out redundant whitespace and join
+    cleaned_text = "\n".join(lines)
+
+    # Compress multiple consecutive newlines to at most two
+    cleaned_text = re.sub(r"\n{3,}", "\n\n", cleaned_text).strip()
+
+    # Intelligently cap maximum characters if exceeding limit
+    if max_chars and len(cleaned_text) > max_chars:
+        cleaned_text = cleaned_text[:max_chars].rsplit(" ", 1)[0] + "\n[...Text Truncated for Token Efficiency...]"
+
+    return cleaned_text
 
 
 def get_sample_resume_text() -> tuple[str, str, str]:

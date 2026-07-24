@@ -1,25 +1,20 @@
 """
 Prompts Module
 Defines system instructions, prompt templates, and JSON response schemas for Gemini API.
+Optimized for high token efficiency and structured output precision.
 """
 
-SYSTEM_INSTRUCTION = """
-You are an expert ATS (Applicant Tracking System) Specialist and Senior Executive Technical Recruiter.
-Your job is to analyze resumes objectively, extract key skills, calculate an accurate ATS compatibility score using a strict 100-point rubric, identify strengths and weaknesses, compare resumes against job descriptions when provided, and provide actionable improvement recommendations.
+from src.utils import clean_text
 
-SCORING RUBRIC (STRICT 100 POINTS):
-- Structure & Formatting (Max 20 pts): Clear sections, readable layout, contact details, standard headings.
-- Technical & Hard Skills (Max 30 pts): Hard skills, frameworks, tools, programming languages.
-- Quantifiable Results (Max 30 pts): Metrics, percentages, numbers, business impact statements.
-- Experience & Role Fit (Max 20 pts): Work history progression, relevant experience, education, certs.
+SYSTEM_INSTRUCTION = """You are an expert ATS Recruiter. Analyze resumes objectively, extract skills, calculate ATS scores using a strict 100-pt rubric, and output strict valid JSON.
 
-CRITICAL ORDER REQUIREMENT:
-You MUST calculate and output the 'score_breakdown' object FIRST.
-Then set 'ats_score' to the exact sum of (structure_formatting + technical_skills + quantifiable_results + experience_fit).
+RUBRIC (100 pts):
+- structure_formatting (0-20): Layout, readability, contact info, standard headings.
+- technical_skills (0-30): Languages, frameworks, tools, tech stack.
+- quantifiable_results (0-30): Metrics, %, numbers, business impact.
+- experience_fit (0-20): Work history, progression, education, certs.
 
-Always produce output in strict, valid JSON format matching the requested schema exactly.
-Do not include markdown code block syntax (```json ... ```) or conversational preamble in your final response—only return the raw JSON object.
-"""
+CRITICAL: Calculate 'score_breakdown' FIRST. Set 'ats_score' to the exact sum of breakdown scores. Return raw JSON ONLY without markdown fences or preamble."""
 
 
 def build_resume_analysis_prompt(
@@ -27,62 +22,42 @@ def build_resume_analysis_prompt(
     target_role: str = "",
     job_description: str = "",
 ) -> str:
-    """Constructs prompt for full ATS Resume Analysis."""
-    target_role_section = (
-        f"\nTARGET JOB ROLE / INDUSTRY: {target_role.strip()}\n"
-        if target_role and target_role.strip()
-        else ""
-    )
+    """Constructs token-efficient prompt for full ATS Resume Analysis."""
+    cleaned_resume = clean_text(resume_text)
+    cleaned_jd = clean_text(job_description) if job_description else ""
 
-    jd_section = (
-        f"\nTARGET JOB DESCRIPTION:\n----------------------------------------\n{job_description.strip()}\n----------------------------------------\n"
-        if job_description and job_description.strip()
-        else ""
-    )
+    role_str = f"TARGET ROLE: {target_role.strip()}\n" if target_role and target_role.strip() else ""
+    jd_str = f"JOB DESCRIPTION:\n{cleaned_jd}\n\n" if cleaned_jd else ""
 
-    prompt = f"""
-Analyze the following resume text as an expert ATS auditor and technical recruiter.
-{target_role_section}
-RESUME TEXT:
-----------------------------------------
-{resume_text}
-----------------------------------------
-{jd_section}
+    return f"""Analyze resume text as expert ATS recruiter.
+{role_str}{jd_str}RESUME TEXT:
+{cleaned_resume}
 
-Evaluate step-by-step using the 100-point rubric:
-1. structure_formatting (0-20)
-2. technical_skills (0-30)
-3. quantifiable_results (0-30)
-4. experience_fit (0-20)
+Evaluate 100-pt rubric: structure_formatting (0-20), technical_skills (0-30), quantifiable_results (0-30), experience_fit (0-20).
 
-Generate a detailed evaluation in valid JSON matching this exact structure:
+Return valid JSON structure:
 {{
   "score_breakdown": {{
-    "structure_formatting": <number 0-20>,
-    "technical_skills": <number 0-30>,
-    "quantifiable_results": <number 0-30>,
-    "experience_fit": <number 0-20>
+    "structure_formatting": <number 0 to 20>,
+    "technical_skills": <number 0 to 30>,
+    "quantifiable_results": <number 0 to 30>,
+    "experience_fit": <number 0 to 20>
   }},
-  "ats_score": <sum of the 4 breakdown category points above, number 0-100>,
-  "summary": "<3-4 sentence professional candidate summary>",
-  "technical_skills": ["<skill1>", "<skill2>", ...],
-  "soft_skills": ["<skill1>", "<skill2>", ...],
-  "missing_skills": ["<missing1>", "<missing2>", ...],
-  "strengths": ["<strength1>", "<strength2>", ...],
-  "weaknesses": ["<weakness1>", "<weakness2>", ...],
-  "improvement_suggestions": ["<suggestion1>", "<suggestion2>", ...],
-  "jd_match_score": <number 0-100, calculate match against target Job Description, or 0 if no JD provided>,
-  "matching_keywords": ["<matched_keyword1>", "<matched_keyword2>", ...],
-  "missing_jd_keywords": ["<missing_jd_keyword1>", "<missing_jd_keyword2>", ...],
-  "jd_tailored_suggestions": ["<tailored_suggestion1>", "<tailored_suggestion2>", ...]
+  "ats_score": <exact sum of the 4 score_breakdown numbers above, 0 to 100>,
+  "summary": "<candidate summary>",
+  "technical_skills": ["<skill1>", "<skill2>"],
+  "soft_skills": ["<skill1>", "<skill2>"],
+  "missing_skills": ["<missing1>"],
+  "strengths": ["<strength1>", "<strength2>"],
+  "weaknesses": ["<weakness1>", "<weakness2>"],
+  "improvement_suggestions": ["<suggestion1>", "<suggestion2>"],
+  "jd_match_score": <match percentage 0-100 or 0 if no JD>,
+  "matching_keywords": ["<matched1>"],
+  "missing_jd_keywords": ["<missing1>"],
+  "jd_tailored_suggestions": ["<suggestion1>"]
 }}
 
-CRITICAL INSTRUCTIONS:
-1. You MUST generate 'score_breakdown' FIRST before 'ats_score'.
-2. Set 'ats_score' to the exact sum of the 4 sub-scores.
-3. Return ONLY valid, parseable JSON. Do NOT wrap in markdown backticks or extra commentary.
-"""
-    return prompt.strip()
+CRITICAL: Calculate non-zero points for each rubric category. 'ats_score' MUST equal exact sum of breakdown numbers. Return ONLY raw JSON.""".strip()
 
 
 def build_cover_letter_prompt(
@@ -90,44 +65,42 @@ def build_cover_letter_prompt(
     target_role: str = "",
     job_description: str = "",
 ) -> str:
-    """Constructs prompt for AI Cover Letter generation."""
-    return f"""
-You are an executive career coach and professional copywriter.
-Write a highly persuasive, 3-paragraph professional Cover Letter for the candidate based on their resume and target job.
+    """Constructs token-efficient prompt for AI Cover Letter generation."""
+    cleaned_resume = clean_text(resume_text)
+    cleaned_jd = clean_text(job_description) if job_description else "General Role"
+    role_str = target_role.strip() if target_role and target_role.strip() else "Software Professional"
 
-TARGET ROLE: {target_role if target_role else 'Software / Tech Professional'}
-JOB DESCRIPTION: {job_description if job_description else 'General Software Engineering Role'}
-
+    return f"""Write a 3-paragraph persuasive Cover Letter.
+TARGET ROLE: {role_str}
+JOB DESCRIPTION: {cleaned_jd}
 RESUME TEXT:
-{resume_text}
+{cleaned_resume}
 
-Return ONLY valid JSON with structure:
+Return ONLY valid JSON:
 {{
-  "cover_letter": "<full_cover_letter_text_with_newlines>",
+  "cover_letter": "<full_text_with_newlines>",
   "key_highlights": ["<highlight1>", "<highlight2>", "<highlight3>"]
-}}
-""".strip()
+}}""".strip()
 
 
 def build_bullet_enhancer_prompt(bullet_text: str, target_role: str = "") -> str:
     """Constructs prompt for AI Bullet Point Rewriter & Action Verb Enhancer."""
-    return f"""
-You are a Senior Recruiter at a Top Tech Company (FAANG/MAANG).
-Rewrite the following weak resume bullet point into 3 high-impact, quantified achievement bullet points using the Google XYZ formula.
+    cleaned_bullet = clean_text(bullet_text)
+    role_str = target_role.strip() if target_role and target_role.strip() else "Software Engineer"
 
-TARGET ROLE: {target_role if target_role else 'Software Engineer'}
-ORIGINAL BULLET POINT: "{bullet_text}"
+    return f"""Rewrite weak resume bullet point into 3 high-impact quantified achievements (Google XYZ formula).
+TARGET ROLE: {role_str}
+ORIGINAL BULLET: "{cleaned_bullet}"
 
-Return ONLY valid JSON with structure:
+Return ONLY valid JSON:
 {{
-  "original": "{bullet_text}",
+  "original": "{cleaned_bullet}",
   "rewrites": [
-    {{"style": "Action & Metrics Heavy", "bullet": "<enhanced_bullet_1>"}},
-    {{"style": "Leadership & Scale Focused", "bullet": "<enhanced_bullet_2>"}},
-    {{"style": "Technical & Tool Focused", "bullet": "<enhanced_bullet_3>"}}
+    {{"style": "Action & Metrics Heavy", "bullet": "<bullet_1>"}},
+    {{"style": "Leadership & Scale Focused", "bullet": "<bullet_2>"}},
+    {{"style": "Technical & Tool Focused", "bullet": "<bullet_3>"}}
   ]
-}}
-""".strip()
+}}""".strip()
 
 
 def build_interview_predictor_prompt(
@@ -136,24 +109,24 @@ def build_interview_predictor_prompt(
     job_description: str = "",
 ) -> str:
     """Constructs prompt for AI Mock Interview Question Predictor."""
-    return f"""
-You are a Principal Engineering Manager conducting technical and behavioral interviews.
-Based on the candidate's resume and target role/JD, predict 5 Technical Questions and 5 Behavioral STAR Questions.
+    cleaned_resume = clean_text(resume_text)
+    cleaned_jd = clean_text(job_description) if job_description else "Tech Role"
+    role_str = target_role.strip() if target_role and target_role.strip() else "Software Engineer"
 
-TARGET ROLE: {target_role if target_role else 'Software Engineer'}
-JOB DESCRIPTION: {job_description if job_description else 'Tech Role'}
-RESUME TEXT: {resume_text}
+    return f"""Predict 5 Technical and 5 Behavioral STAR interview questions based on resume & role.
+TARGET ROLE: {role_str}
+JOB DESCRIPTION: {cleaned_jd}
+RESUME TEXT: {cleaned_resume}
 
-Return ONLY valid JSON with structure:
+Return ONLY valid JSON:
 {{
   "technical_questions": [
-    {{"question": "<tech_question>", "topic": "<topic>", "answer_strategy": "<strategy>"}}
+    {{"question": "<question>", "topic": "<topic>", "answer_strategy": "<strategy>"}}
   ],
   "behavioral_questions": [
-    {{"question": "<behavioral_question>", "competency": "<competency>", "star_framework": "<guidance>"}}
+    {{"question": "<question>", "competency": "<competency>", "star_framework": "<guidance>"}}
   ]
-}}
-""".strip()
+}}""".strip()
 
 
 def build_outreach_prompt(
@@ -162,48 +135,88 @@ def build_outreach_prompt(
     company_name: str = "",
     job_description: str = "",
 ) -> str:
-    """Constructs prompt for Recruiter Cold Email & LinkedIn Outreach Generator."""
-    return f"""
-You are an executive talent strategist. Generate 3 highly effective recruiter outreach templates for a candidate.
+    """Constructs prompt for high-converting Recruiter Cold Email, Hiring Manager Email & LinkedIn Outreach Generator."""
+    cleaned_resume = clean_text(resume_text)
+    cleaned_jd = clean_text(job_description) if job_description else "Engineering Role"
+    role_str = target_role.strip() if target_role and target_role.strip() else "Software Engineer"
+    comp_str = company_name.strip() if company_name and company_name.strip() else "Target Company"
 
-TARGET ROLE: {target_role if target_role else 'Software Engineer'}
-COMPANY NAME: {company_name if company_name else 'Target Company'}
-JOB DESCRIPTION: {job_description if job_description else 'Tech Role'}
-RESUME SUMMARY: {resume_text[:1000]}
+    return f"""You are a world-class Executive Career Coach and Technical Recruiter. Write 3 highly personalized, high-converting cold outreach messages for the candidate.
 
-Return ONLY valid JSON with structure:
+INPUT DATA:
+- TARGET ROLE: {role_str}
+- TARGET COMPANY: {comp_str}
+- JOB DESCRIPTION: {cleaned_jd}
+- CANDIDATE RESUME TEXT:
+{cleaned_resume}
+
+GUIDELINES FOR OUTREACH TEMPLATES:
+1. recruiter_email:
+   - Subject line: High-open rate, professional subject line mentioning candidate's primary skill stack and the role at {comp_str}.
+   - Body (3 paragraphs):
+     * Para 1: Enthusiastic hook referencing {comp_str} and the {role_str} position, citing candidate's top 3 technical skills from resume.
+     * Para 2: Specific quantified metric/achievement extracted from candidate's resume history.
+     * Para 3: Polite, low-friction Call-To-Action asking for a brief 10-minute discovery call.
+
+2. hiring_manager_email:
+   - Subject line: Engineering-focused, value-driven subject line.
+   - Body (3 paragraphs):
+     * Para 1: Peer-to-peer technical hook explaining candidate's interest in {comp_str}'s engineering vision.
+     * Para 2: Highlights technical problem-solving capabilities, backend/frontend microservices scale, and architecture experience.
+     * Para 3: Professional call-to-action to share technical insights.
+
+3. linkedin_note:
+   - Concise connection request note (< 280 characters) mentioning target role and top skill.
+
+Return ONLY valid JSON:
 {{
   "recruiter_email": {{
-    "subject": "<compelling_email_subject>",
-    "body": "<professional_cold_email_body_3_paragraphs>"
+    "subject": "<high_converting_subject>",
+    "body": "<full_3_paragraph_email_text>"
   }},
   "hiring_manager_email": {{
-    "subject": "<high_impact_manager_subject>",
-    "body": "<direct_hiring_manager_email_body>"
+    "subject": "<value_driven_subject>",
+    "body": "<full_3_paragraph_email_text>"
   }},
-  "linkedin_note": "<concise_linkedin_connection_message_under_280_chars>"
-}}
-""".strip()
+  "linkedin_note": "<short_note_under_280_chars>"
+}}""".strip()
 
 
 def build_salary_estimation_prompt(
     resume_text: str,
     target_role: str = "",
+    target_location: str = "United States (USD $)",
+    company_tier: str = "Mid-Size IT Enterprise",
 ) -> str:
-    """Constructs prompt for Salary Range & Compensation Leverage Estimator."""
-    return f"""
-You are a Tech Compensation Consultant. Estimate market salary ranges and compensation leverage points for this candidate based on their skills and experience.
+    """Constructs prompt for Region & Company-Tier adjusted Salary Range & Compensation Leverage Estimator."""
+    cleaned_resume = clean_text(resume_text)
+    role_str = target_role.strip() if target_role and target_role.strip() else "Software Engineer"
+    loc_str = target_location.strip() if target_location else "United States (USD $)"
+    tier_str = company_tier.strip() if company_tier else "Mid-Size IT Enterprise"
 
-TARGET ROLE: {target_role if target_role else 'Software Engineer'}
-RESUME TEXT: {resume_text[:1500]}
+    return f"""Estimate realistic market salary range adjusted for candidate experience, location/country, and company tier.
 
-Return ONLY valid JSON with structure:
+INPUT PARAMETERS:
+- TARGET ROLE: {role_str}
+- TARGET COUNTRY / REGION: {loc_str}
+- COMPANY TIER / TYPE: {tier_str}
+- CANDIDATE RESUME TEXT:
+{cleaned_resume}
+
+GUIDELINES:
+1. Currency & Unit: Use local currency symbol (e.g. ₹ INR in Lakhs per annum for India, $ USD for US/Canada/Remote, £ GBP for UK, € EUR for EU).
+2. Realistic Market Adjustments:
+   - India: Express in Lakhs Per Annum (e.g. min: 14.5 LPA, median: 24.0 LPA, max: 40.0 LPA).
+   - US / UK / EU / Canada: Express in annual base salary.
+   - Company Tier: FAANG/Unicorn pays higher equity/base than early startups or local agencies.
+
+Return ONLY valid JSON:
 {{
-  "seniority_level": "<Junior / Mid-Level / Senior / Staff / Lead>",
-  "estimated_min_usd": <number_annual_salary_usd>,
-  "estimated_median_usd": <number_annual_salary_usd>,
-  "estimated_max_usd": <number_annual_salary_usd>,
+  "currency": "<currency symbol e.g. ₹ LPA, $ USD, £ GBP, € EUR>",
+  "seniority_level": "<Seniority Level e.g. Senior Engineer>",
+  "estimated_min": "<number or formatted string e.g. 14.5 LPA or 120000>",
+  "estimated_median": "<number or formatted string e.g. 24.0 LPA or 160000>",
+  "estimated_max": "<number or formatted string e.g. 38.0 LPA or 195000>",
   "top_value_skills": ["<skill1>", "<skill2>", "<skill3>"],
   "negotiation_leverage_points": ["<point1>", "<point2>", "<point3>"]
-}}
-""".strip()
+}}""".strip()

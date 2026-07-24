@@ -38,6 +38,33 @@ class TestUtils(unittest.TestCase):
         cleaned = clean_text(raw)
         self.assertEqual(cleaned, "Hello World\n\nTest")
 
+    def test_clean_text_strips_dividers_and_page_headers(self):
+        """Verify clean_text strips decorative dividers, page number artifacts, and standardizes bullets."""
+        raw = """
+========================================
+ALEXANDER PIERCE
+Page 1 of 3
+----------------------------------------
+• Developed microservices using Python
+► Optimized SQL queries
+Page 2
+****************************************
+"""
+        cleaned = clean_text(raw)
+        self.assertNotIn("========================================", cleaned)
+        self.assertNotIn("----------------------------------------", cleaned)
+        self.assertNotIn("Page 1 of 3", cleaned)
+        self.assertNotIn("Page 2", cleaned)
+        self.assertIn("- Developed microservices using Python", cleaned)
+        self.assertIn("- Optimized SQL queries", cleaned)
+
+    def test_clean_text_truncates_long_input(self):
+        """Verify clean_text caps character length when exceeding max_chars."""
+        raw = "Word " * 2000
+        cleaned = clean_text(raw, max_chars=100)
+        self.assertLessEqual(len(cleaned), 160)
+        self.assertIn("[...Text Truncated for Token Efficiency...]", cleaned)
+
     def test_generate_json_report_returns_valid_json(self):
         """Verify json report generator returns parseable JSON."""
         output_json = generate_json_report(self.sample_analysis)

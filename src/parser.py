@@ -40,6 +40,12 @@ class ResumeParser:
             UnsupportedFileTypeError: If file format is not supported (.pdf or .docx).
             ParsingError: If text extraction fails.
         """
+        # If file_source is already raw text content (e.g. sample text or text input), return directly
+        if isinstance(file_source, str) and not (file_source.endswith(".pdf") or file_source.endswith(".docx")) and len(file_source) > 50:
+            cleaned = clean_text(file_source)
+            if cleaned:
+                return cleaned
+
         if not is_valid_file_extension(filename):
             logger.error(f"Unsupported file format attempted: {filename}")
             raise UnsupportedFileTypeError(
@@ -76,31 +82,51 @@ class ResumeParser:
             raise ParsingError(f"Error parsing file '{filename}': {str(e)}") from e
 
     def _parse_pdf(self, file_source: str | bytes) -> str:
-        """Extracts text content page-by-page from a PDF file using pdfplumber."""
+        """Extracts text content page-by-page from a PDF file using pdfplumber with PyPDF2 fallback."""
         extracted_pages: list[str] = []
 
         try:
             if isinstance(file_source, bytes):
                 pdf_stream = io.BytesIO(file_source)
                 with pdfplumber.open(pdf_stream) as pdf:
-                    for page_idx, page in enumerate(pdf.pages, start=1):
+                    for page in pdf.pages:
                         text = page.extract_text()
-                        if text:
+                        if text and text.strip():
                             extracted_pages.append(text)
             else:
                 with pdfplumber.open(file_source) as pdf:
-                    for page_idx, page in enumerate(pdf.pages, start=1):
+                    for page in pdf.pages:
                         text = page.extract_text()
-                        if text:
+                        if text and text.strip():
                             extracted_pages.append(text)
 
-            return "\n".join(extracted_pages)
+            res = "\n".join(extracted_pages)
+            if res.strip():
+                return res
 
         except Exception as e:
-            raise ParsingError(f"PDF parsing failure: {str(e)}") from e
+            logger.warning(f"pdfplumber extraction encountered issue: {e}")
+
+        # Fallback to PyPDF2
+        try:
+            import PyPDF2
+            if isinstance(file_source, bytes):
+                reader = PyPDF2.PdfReader(io.BytesIO(file_source))
+            else:
+                reader = PyPDF2.PdfReader(file_source)
+
+            fallback_pages = []
+            for page in reader.pages:
+                t = page.extract_text()
+                if t and t.strip():
+                    fallback_pages.append(t)
+            return "\n".join(fallback_pages)
+        except Exception as fallback_err:
+            logger.error(f"PyPDF2 fallback also failed: {fallback_err}")
+            raise ParsingError(f"PDF parsing failure: {str(fallback_err)}") from fallback_err
 
     def _parse_docx(self, file_source: str | bytes) -> str:
-        """Extracts text content paragraph-by-paragraph from a DOCX file using python-docx."""
+        """Extracts text content from paragraphs and tables in DOCX files using python-docx."""
         try:
             if isinstance(file_source, bytes):
                 docx_stream = io.BytesIO(file_source)
@@ -108,8 +134,19 @@ class ResumeParser:
             else:
                 doc = docx.Document(file_source)
 
-            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-            return "\n".join(paragraphs)
+            lines: list[str] = []
+            for p in doc.paragraphs:
+                if p.text.strip():
+                    lines.append(p.text.strip())
+
+            # Extract text embedded in DOCX tables
+            for table in doc.tables:
+                for row in table.rows:
+                    row_cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                    if row_cells:
+                        lines.append(" | ".join(row_cells))
+
+            return "\n".join(lines)
 
         except Exception as e:
             raise ParsingError(f"DOCX parsing failure: {str(e)}") from e
