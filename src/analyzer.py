@@ -40,6 +40,7 @@ class ResumeAnalyzer:
         file_source: str | bytes,
         filename: str,
         target_role: str = "",
+        job_description: str = "",
     ) -> dict:
         """
         Orchestrates full resume parsing and Gemini AI analysis pipeline.
@@ -48,9 +49,10 @@ class ResumeAnalyzer:
             file_source: File path or raw byte stream of the resume.
             filename: Original file name (used for extension detection).
             target_role: Optional target job role/title.
+            job_description: Optional target job description text for match analysis.
 
         Returns:
-            dict: Comprehensive analysis result containing metadata, scores, skills, and suggestions.
+            dict: Comprehensive analysis result containing metadata, scores, skills, suggestions, and JD metrics.
 
         Raises:
             AnalysisError: High-level error if parsing or LLM evaluation fails.
@@ -69,6 +71,7 @@ class ResumeAnalyzer:
             analysis_result = self.llm_client.analyze_resume(
                 resume_text=extracted_text,
                 target_role=target_role,
+                job_description=job_description,
             )
         except LLMError as e:
             logger.error(f"Analysis failed at LLM evaluation phase: {str(e)}")
@@ -79,6 +82,7 @@ class ResumeAnalyzer:
             "filename": filename,
             "char_count": len(extracted_text),
             "target_role": target_role if target_role else "General Software / Tech",
+            "has_jd": bool(job_description and job_description.strip()),
         }
 
         logger.info(f"Analysis workflow completed successfully for '{filename}'.")

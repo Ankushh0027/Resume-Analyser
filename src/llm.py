@@ -61,16 +61,22 @@ class GeminiClient:
             logger.error(f"Failed to configure Gemini API client: {str(e)}", exc_info=True)
             raise LLMAuthenticationError(f"Gemini API configuration failure: {str(e)}") from e
 
-    def analyze_resume(self, resume_text: str, target_role: str = "") -> dict:
+    def analyze_resume(
+        self,
+        resume_text: str,
+        target_role: str = "",
+        job_description: str = "",
+    ) -> dict:
         """
-        Transmits extracted resume text to Gemini API and returns structured JSON analysis.
+        Transmits extracted resume text and optional JD to Gemini API and returns structured JSON analysis.
 
         Args:
             resume_text: Sanitized text content from resume.
             target_role: Optional target job title.
+            job_description: Optional target job description text.
 
         Returns:
-            dict: Structured resume analysis containing scores, skills, strengths, and suggestions.
+            dict: Structured resume analysis containing scores, skills, strengths, suggestions, and JD match metrics.
 
         Raises:
             LLMError: If network or generation fails.
@@ -79,7 +85,7 @@ class GeminiClient:
         if not resume_text or not resume_text.strip():
             raise LLMError("Cannot analyze empty resume text.")
 
-        prompt = build_resume_analysis_prompt(resume_text, target_role)
+        prompt = build_resume_analysis_prompt(resume_text, target_role, job_description)
         logger.info("Sending resume analysis request to Gemini API...")
 
         try:
@@ -124,13 +130,17 @@ class GeminiClient:
             "strengths",
             "weaknesses",
             "improvement_suggestions",
+            "jd_match_score",
+            "matching_keywords",
+            "missing_jd_keywords",
+            "jd_tailored_suggestions",
         ]
         missing = [k for k in required_keys if k not in data]
         if missing:
             logger.warning(f"Response missing required keys: {missing}")
             # Ensure defaults for missing keys to prevent UI breakage
             for key in missing:
-                if key == "ats_score":
+                if key in ("ats_score", "jd_match_score"):
                     data[key] = 0
                 elif key == "summary":
                     data[key] = "N/A"

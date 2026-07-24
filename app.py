@@ -163,7 +163,7 @@ def get_score_color_class(score: int) -> str:
     return "score-low"
 
 
-def render_sidebar() -> str:
+def render_sidebar() -> tuple[str, str]:
     """Renders application sidebar for user controls and settings."""
     with st.sidebar:
         st.markdown("### ⚙️ Settings & Context")
@@ -173,6 +173,13 @@ def render_sidebar() -> str:
             "Target Job Title (Optional)",
             placeholder="e.g., Senior Full Stack Developer",
             help="Providing a target role improves keyword alignment and missing skill detection.",
+        )
+
+        job_description = st.text_area(
+            "Target Job Description (Optional)",
+            height=140,
+            placeholder="Paste job posting text here...",
+            help="Paste the full job description text to calculate exact keyword match score and gap analysis.",
         )
 
         st.markdown("---")
@@ -198,16 +205,17 @@ def render_sidebar() -> str:
             **About AI Resume Analyzer**
             - **Model**: `Gemini 2.5 Flash`
             - **Supported Formats**: PDF, DOCX
-            - **Privacy**: Processing is completed in-memory.
+            - **Features**: ATS Scoring, Skill Gaps, JD Matching
             """
         )
-        return target_role
+        return target_role, job_description
 
 
 def render_dashboard(result: dict) -> None:
     """Renders structured analysis results in visual cards and tabs."""
     score = result.get("ats_score", 0)
     meta = result.get("meta", {})
+    has_jd = meta.get("has_jd", False) or result.get("jd_match_score", 0) > 0
     color_class = get_score_color_class(score)
 
     st.markdown("## 📊 Analysis Dashboard")
@@ -232,18 +240,24 @@ def render_dashboard(result: dict) -> None:
         st.info(result.get("summary", "No summary generated."))
 
         # Quick file metadata stats
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         with c1:
             st.metric("Document Name", meta.get("filename", "N/A"))
         with c2:
             st.metric("Character Count", f"{meta.get('char_count', 0):,} chars")
+        with c3:
+            jd_score = result.get("jd_match_score", 0)
+            st.metric("JD Match Score", f"{jd_score}%" if has_jd else "N/A (No JD)")
 
     st.markdown("---")
 
-    # Detailed Analysis Tabs
-    tab_skills, tab_swot, tab_action = st.tabs(
-        ["🎯 Skills Assessment", "⚡ Strengths & Weaknesses", "🚀 Action Plan & Suggestions"]
-    )
+    # Dynamic Tabs Setup
+    tab_titles = ["🎯 Skills Assessment", "⚡ Strengths & Weaknesses", "🚀 Action Plan & Suggestions"]
+    if has_jd:
+        tab_titles.append("📋 Job Description Match")
+
+    tabs = st.tabs(tab_titles)
+    tab_skills, tab_swot, tab_action = tabs[0], tabs[1], tabs[2]
 
     with tab_skills:
         col_tech, col_soft, col_miss = st.columns(3)
@@ -305,18 +319,52 @@ def render_dashboard(result: dict) -> None:
                 unsafe_allow_html=True,
             )
 
+    if has_jd:
+        tab_jd = tabs[3]
+        with tab_jd:
+            st.markdown("#### 📋 Target Job Description Comparison")
+
+            col_matched, col_missing_jd = st.columns(2)
+
+            with col_matched:
+                st.markdown("##### 🟢 Matching Keywords & Skills")
+                matched_kw = result.get("matching_keywords", [])
+                if matched_kw:
+                    badges = "".join([f'<span class="badge badge-tech">{s}</span>' for s in matched_kw])
+                    st.markdown(f"<div>{badges}</div>", unsafe_allow_html=True)
+                else:
+                    st.caption("No exact keyword matches found.")
+
+            with col_missing_jd:
+                st.markdown("##### 🔴 Missing JD Keywords")
+                missing_kw = result.get("missing_jd_keywords", [])
+                if missing_kw:
+                    badges = "".join([f'<span class="badge badge-missing">{s}</span>' for s in missing_kw])
+                    st.markdown(f"<div>{badges}</div>", unsafe_allow_html=True)
+                else:
+                    st.success("Great job! No major JD keywords are missing.")
+
+            st.markdown("---")
+            st.markdown("##### 🎯 JD Alignment Recommendations")
+            jd_sug = result.get("jd_tailored_suggestions", [])
+            for idx, sug in enumerate(jd_sug, start=1):
+                st.markdown(
+                    f'<div class="insight-card suggestion-item"><strong>{idx}.</strong> {sug}</div>',
+                    unsafe_allow_html=True,
+                )
+
 
 def main() -> None:
     """Main application flow execution."""
     # App Header
     st.markdown('<div class="hero-title">AI Resume Analyzer</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="hero-subtitle">Production-grade ATS scoring, skill gap detection, and executive evaluation powered by Gemini AI</div>',
+        '<div class="hero-subtitle">Production-grade ATS scoring, skill gap detection, and job description matching powered by Gemini AI</div>',
         unsafe_allow_html=True,
     )
 
     # Render Sidebar
-    target_role = render_sidebar()
+    target_role, job_description = render_sidebar()
 
     # File Uploader Widget
     uploaded_file = st.file_uploader(
@@ -350,6 +398,7 @@ def main() -> None:
                         file_source=file_bytes,
                         filename=filename,
                         target_role=target_role,
+                        job_description=job_description,
                     )
 
                     # Store result in session state
