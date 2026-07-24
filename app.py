@@ -858,22 +858,68 @@ def render_salary_estimator_module(model_choice: str, target_role: str) -> None:
 # Main Application Flow
 # -----------------------------------------------------------------------------
 
+# -----------------------------------------------------------------------------
+# Main Application Flow
+# -----------------------------------------------------------------------------
+
 def main() -> None:
     """Main application flow execution."""
+    module_nav, target_role, job_description, model_choice = render_sidebar()
+
+    # Top Announcement Pill Bar
+    st.markdown(
+        """
+        <div style="text-align: center; margin-bottom: 12px;">
+            <span style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); color: #A5B4FC; font-size: 0.82rem; font-weight: 600; padding: 6px 18px; border-radius: 30px; display: inline-block;">
+                ✨ Powered by Gemini 2.5 AI • Complete Resume Intelligence Suite
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # App Header with Logo
     col_logo, col_title = st.columns([1, 10])
     with col_logo:
         if os.path.exists("assets/logo.svg"):
-            st.image("assets/logo.svg", width=72)
+            st.image("assets/logo.svg", width=76)
     with col_title:
         st.markdown('<div class="hero-title">AI Resume Analyzer ⚡</div>', unsafe_allow_html=True)
         st.markdown(
-            '<div class="hero-subtitle">Complete Resume Intelligence Suite • ATS Scoring, Cover Letter Builder, Bullet Enhancer, Outreach & Salary Estimator</div>',
+            '<div class="hero-subtitle">Optimize ATS Scores • Tailor Cover Letters • Rewrite Bullets • Predict Interview Questions • Estimate Salaries</div>',
             unsafe_allow_html=True,
         )
 
-    st.markdown('<span class="trust-badge">🔒 Privacy Guarantee: 100% In-Memory Processing — No Resume Files Retained</span>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
+            <span class="trust-badge" style="margin-bottom: 0;">🔒 100% In-Memory Processing & Privacy Guarantee</span>
+            <span class="trust-badge" style="margin-bottom: 0; background: rgba(99, 102, 241, 0.08); border-color: rgba(99, 102, 241, 0.25); color: #A5B4FC;">⚡ Multi-Model Fallback Engine</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    module_nav, target_role, job_description, model_choice = render_sidebar()
+    # Feature Grid Banner
+    st.markdown(
+        """
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 2rem;">
+            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 16px; padding: 20px; backdrop-filter: blur(10px);">
+                <div style="font-size: 1.3rem; margin-bottom: 6px;">📊 100-Point ATS Audit</div>
+                <div style="color: #94A3B8; font-size: 0.88rem;">Itemized rubric scoring across formatting, hard skills, metrics, & experience.</div>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 16px; padding: 20px; backdrop-filter: blur(10px);">
+                <div style="font-size: 1.3rem; margin-bottom: 6px;">📝 Tailored Cover Letters</div>
+                <div style="color: #94A3B8; font-size: 0.88rem;">Craft bespoke 3-paragraph executive cover letters from target job postings.</div>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(236, 72, 153, 0.2); border-radius: 16px; padding: 20px; backdrop-filter: blur(10px);">
+                <div style="font-size: 1.3rem; margin-bottom: 6px;">⚡ Google XYZ Bullet Rewriter</div>
+                <div style="color: #94A3B8; font-size: 0.88rem;">Rewrite weak bullet points into high-impact, quantified achievement statements.</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if module_nav == "📊 AI Resume Analyzer":
         uploaded_file = st.file_uploader(
