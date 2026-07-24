@@ -5,14 +5,30 @@ Defines system instructions, prompt templates, and JSON response schemas for Gem
 
 SYSTEM_INSTRUCTION = """
 You are an expert ATS (Applicant Tracking System) Specialist and Senior Executive Technical Recruiter.
-Your job is to analyze resumes objectively, extract key skills, calculate an accurate ATS compatibility score, identify strengths and weaknesses, compare resumes against job descriptions when provided, and provide actionable improvement recommendations.
+Your job is to analyze resumes objectively, extract key skills, calculate an accurate ATS compatibility score using a strict 100-point rubric, identify strengths and weaknesses, compare resumes against job descriptions when provided, and provide actionable improvement recommendations.
+
+SCORING RUBRIC (STRICT 100 POINTS):
+- Structure & Formatting (Max 20 pts): Clear sections, readable layout, contact details, standard headings.
+- Technical & Hard Skills (Max 30 pts): Hard skills, frameworks, tools, programming languages.
+- Quantifiable Results (Max 30 pts): Metrics, percentages, numbers, business impact statements.
+- Experience & Role Fit (Max 20 pts): Work history progression, relevant experience, education, certs.
+
+CRITICAL ORDER REQUIREMENT:
+You MUST calculate and output the 'score_breakdown' object FIRST.
+Then set 'ats_score' to the exact sum of (structure_formatting + technical_skills + quantifiable_results + experience_fit).
 
 Always produce output in strict, valid JSON format matching the requested schema exactly.
 Do not include markdown code block syntax (```json ... ```) or conversational preamble in your final response—only return the raw JSON object.
 """
 
 RESUME_ANALYSIS_SCHEMA = {
-    "ats_score": "Integer between 0 and 100 representing overall resume quality and ATS formatting readiness",
+    "score_breakdown": {
+        "structure_formatting": "Integer (0-20)",
+        "technical_skills": "Integer (0-30)",
+        "quantifiable_results": "Integer (0-30)",
+        "experience_fit": "Integer (0-20)"
+    },
+    "ats_score": "Exact sum of the 4 breakdown scores (0-100)",
     "summary": "String providing a concise 3-4 sentence professional evaluation of the candidate",
     "technical_skills": "List of strings containing hard/technical skills, tools, programming languages, and frameworks found",
     "soft_skills": "List of strings containing soft skills, leadership traits, and communication capabilities found",
@@ -32,17 +48,7 @@ def build_resume_analysis_prompt(
     target_role: str = "",
     job_description: str = "",
 ) -> str:
-    """
-    Constructs the prompt payload for the Gemini API.
-
-    Args:
-        resume_text: Extracted plain text from candidate's resume.
-        target_role: Optional target job title or industry focus.
-        job_description: Optional target job description text for direct comparison.
-
-    Returns:
-        str: Fully formatted prompt string.
-    """
+    """Constructs the prompt payload for the Gemini API using Chain-of-Thought scoring breakdown."""
     target_role_section = (
         f"\nTARGET JOB ROLE / INDUSTRY: {target_role.strip()}\n"
         if target_role and target_role.strip()
@@ -63,9 +69,22 @@ RESUME TEXT:
 {resume_text}
 ----------------------------------------
 {jd_section}
+
+Evaluate step-by-step using the 100-point rubric:
+1. structure_formatting (0-20)
+2. technical_skills (0-30)
+3. quantifiable_results (0-30)
+4. experience_fit (0-20)
+
 Generate a detailed evaluation in valid JSON matching this exact structure:
 {{
-  "ats_score": <number 0-100>,
+  "score_breakdown": {{
+    "structure_formatting": <number 0-20>,
+    "technical_skills": <number 0-30>,
+    "quantifiable_results": <number 0-30>,
+    "experience_fit": <number 0-20>
+  }},
+  "ats_score": <sum of the 4 breakdown category points above, number 0-100>,
   "summary": "<3-4 sentence professional candidate summary>",
   "technical_skills": ["<skill1>", "<skill2>", ...],
   "soft_skills": ["<skill1>", "<skill2>", ...],
@@ -80,8 +99,91 @@ Generate a detailed evaluation in valid JSON matching this exact structure:
 }}
 
 CRITICAL INSTRUCTIONS:
-1. Calculate 'ats_score' based on skill density, clarity, quantifiable metrics, and overall structure.
-2. If a Job Description is provided, calculate 'jd_match_score', extract 'matching_keywords', list 'missing_jd_keywords', and provide 'jd_tailored_suggestions'.
+1. You MUST generate 'score_breakdown' FIRST before 'ats_score'.
+2. Set 'ats_score' to the exact sum of the 4 sub-scores.
 3. Return ONLY valid, parseable JSON. Do NOT wrap in markdown backticks or extra commentary.
 """
     return prompt.strip()
+
+
+def build_cover_letter_prompt(
+    resume_text: str,
+    target_role: str = "",
+    job_description: str = "",
+) -> str:
+    """Constructs prompt for AI Cover Letter generation."""
+    return f"""
+You are an executive career coach and professional copywriter.
+Write a highly persuasive, 3-paragraph professional Cover Letter for the candidate based on their resume and target job.
+
+TARGET ROLE: {target_role if target_role else 'Software / Tech Professional'}
+JOB DESCRIPTION: {job_description if job_description else 'General Software Engineering Role'}
+
+RESUME TEXT:
+{resume_text}
+
+INSTRUCTIONS:
+1. Paragraph 1: High-impact opening line introducing the candidate, target role, and enthusiasm for the company mission.
+2. Paragraph 2: Core technical achievements from the resume directly mapped to the job requirements, highlighting quantified metrics.
+3. Paragraph 3: Professional call-to-action expressing desire for an interview.
+4. Return ONLY valid JSON with structure:
+{{
+  "cover_letter": "<full_cover_letter_text_with_newlines>",
+  "key_highlights": ["<highlight1>", "<highlight2>", "<highlight3>"]
+}}
+""".strip()
+
+
+def build_bullet_enhancer_prompt(bullet_text: str, target_role: str = "") -> str:
+    """Constructs prompt for AI Bullet Point Rewriter & Action Verb Enhancer."""
+    return f"""
+You are a Senior Recruiter at a Top Tech Company (FAANG/MAANG).
+Rewrite the following weak resume bullet point into 3 high-impact, quantified achievement bullet points.
+
+TARGET ROLE: {target_role if target_role else 'Software Engineer'}
+ORIGINAL BULLET POINT:
+"{bullet_text}"
+
+INSTRUCTIONS:
+- Use strong action verbs (Architected, Engineered, Spearheaded, Optimized).
+- Include realistic quantified impact metrics (percentages, throughput, latency, revenue/cost savings).
+- Follow the Google XYZ resume formula: "Accomplished [X] as measured by [Y], by doing [Z]".
+- Return ONLY valid JSON with structure:
+{{
+  "original": "{bullet_text}",
+  "rewrites": [
+    {{"style": "Action & Metrics Heavy", "bullet": "<enhanced_bullet_1>"}},
+    {{"style": "Leadership & Scale Focused", "bullet": "<enhanced_bullet_2>"}},
+    {{"style": "Technical & Tool Focused", "bullet": "<enhanced_bullet_3>"}}
+  ]
+}}
+""".strip()
+
+
+def build_interview_predictor_prompt(
+    resume_text: str,
+    target_role: str = "",
+    job_description: str = "",
+) -> str:
+    """Constructs prompt for AI Mock Interview Question Predictor."""
+    return f"""
+You are a Principal Engineering Manager conducting technical and behavioral interviews.
+Based on the candidate's resume and target role/JD, predict 5 Technical Questions and 5 Behavioral STAR Questions they will likely face in real interviews, along with ideal sample answer strategies.
+
+TARGET ROLE: {target_role if target_role else 'Software Engineer'}
+JOB DESCRIPTION: {job_description if job_description else 'Tech Role'}
+RESUME TEXT:
+{resume_text}
+
+Return ONLY valid JSON with structure:
+{{
+  "technical_questions": [
+    {{"question": "<tech_question_1>", "topic": "<topic>", "answer_strategy": "<key_points_to_mention>"}},
+    ... (5 total)
+  ],
+  "behavioral_questions": [
+    {{"question": "<behavioral_star_question_1>", "competency": "<competency>", "star_framework": "<situation_task_action_result_guidance>"}},
+    ... (5 total)
+  ]
+}}
+""".strip()

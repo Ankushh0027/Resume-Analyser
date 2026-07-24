@@ -3,24 +3,26 @@ Streamlit Web Application Entrypoint
 AI Resume Analyzer Dashboard UI
 """
 
+import os
 import streamlit as st
 from src.config import config
 from src.logger import logger
 from src.analyzer import ResumeAnalyzer, AnalysisError
 from src.parser import UnsupportedFileTypeError, ParsingError
-from src.llm import LLMAuthenticationError
+from src.llm import LLMAuthenticationError, LLMQuotaExhaustedError
+from src.utils import generate_text_report, generate_json_report, get_sample_resume_text
 
 # -----------------------------------------------------------------------------
 # Page Configuration & Modern Dark Glassmorphism Styling
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="AI Resume Analyzer | Portfolio Edition",
+    page_title="AI Resume Analyzer | Enterprise Edition",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Custom Styling (CSS Injection)
+# Custom Glassmorphism Styling (CSS Injection)
 st.markdown(
     """
     <style>
@@ -30,70 +32,68 @@ st.markdown(
         font-family: 'Inter', sans-serif;
     }
 
-    /* Main Container Padding */
     .main .block-container {
-        padding-top: 2rem;
+        padding-top: 1.5rem;
         padding-bottom: 3rem;
         max-width: 1200px;
     }
 
-    /* Glassmorphism Cards */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.03);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 20px;
+    .header-container {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 1.5rem;
     }
 
-    /* Hero Header */
     .hero-title {
-        font-size: 2.6rem;
-        font-weight: 700;
+        font-size: 2.5rem;
+        font-weight: 800;
         background: linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 0.2rem;
+        margin-bottom: 0.1rem;
     }
 
     .hero-subtitle {
         color: #9CA3AF;
-        font-size: 1.1rem;
-        margin-bottom: 2rem;
+        font-size: 1.05rem;
+        margin-bottom: 1rem;
     }
 
-    /* ATS Score Metric Display */
+    .trust-badge {
+        display: inline-block;
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #34D399;
+        font-size: 0.82rem;
+        font-weight: 500;
+        padding: 4px 12px;
+        border-radius: 20px;
+        margin-bottom: 1.2rem;
+    }
+
     .score-container {
         text-align: center;
-        padding: 30px;
+        padding: 24px;
         border-radius: 20px;
         background: linear-gradient(145deg, rgba(30, 27, 75, 0.6), rgba(15, 23, 42, 0.8));
         border: 1px solid rgba(99, 102, 241, 0.3);
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     }
 
-    .score-number {
-        font-size: 4.5rem;
-        font-weight: 800;
-        line-height: 1;
-        margin-bottom: 8px;
-    }
-
+    .score-number { font-size: 4.2rem; font-weight: 800; line-height: 1; }
     .score-high { color: #10B981; }
     .score-med { color: #F59E0B; }
     .score-low { color: #EF4444; }
 
     .score-label {
-        font-size: 1.1rem;
+        font-size: 1rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 1.5px;
         color: #D1D5DB;
     }
 
-    /* Skill Badges */
     .badge {
         display: inline-block;
         padding: 6px 14px;
@@ -101,52 +101,23 @@ st.markdown(
         border-radius: 20px;
         font-size: 0.85rem;
         font-weight: 500;
-        letter-spacing: 0.3px;
     }
+    .badge-tech { background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4); }
+    .badge-soft { background: rgba(168, 85, 247, 0.15); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4); }
+    .badge-missing { background: rgba(239, 68, 68, 0.15); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4); }
 
-    .badge-tech {
-        background: rgba(99, 102, 241, 0.15);
-        color: #818CF8;
-        border: 1px solid rgba(99, 102, 241, 0.4);
-    }
+    .insight-card { padding: 16px; border-radius: 12px; margin-bottom: 12px; font-size: 0.95rem; }
+    .strength-item { background: rgba(16, 185, 129, 0.08); border-left: 4px solid #10B981; color: #E5E7EB; }
+    .weakness-item { background: rgba(245, 158, 11, 0.08); border-left: 4px solid #F59E0B; color: #E5E7EB; }
+    .suggestion-item { background: rgba(99, 102, 241, 0.08); border-left: 4px solid #6366F1; color: #E5E7EB; }
 
-    .badge-soft {
-        background: rgba(168, 85, 247, 0.15);
-        color: #C084FC;
-        border: 1px solid rgba(168, 85, 247, 0.4);
-    }
-
-    .badge-missing {
-        background: rgba(239, 68, 68, 0.15);
-        color: #FCA5A5;
-        border: 1px solid rgba(239, 68, 68, 0.4);
-    }
-
-    /* Bullet List Cards */
-    .insight-card {
-        padding: 16px;
-        border-radius: 12px;
-        margin-bottom: 12px;
-        font-size: 0.95rem;
-        line-height: 1.5;
-    }
-
-    .strength-item {
-        background: rgba(16, 185, 129, 0.08);
-        border-left: 4px solid #10B981;
-        color: #E5E7EB;
-    }
-
-    .weakness-item {
-        background: rgba(245, 158, 11, 0.08);
-        border-left: 4px solid #F59E0B;
-        color: #E5E7EB;
-    }
-
-    .suggestion-item {
-        background: rgba(99, 102, 241, 0.08);
-        border-left: 4px solid #6366F1;
-        color: #E5E7EB;
+    .footer {
+        text-align: center;
+        padding: 24px;
+        color: #6B7280;
+        font-size: 0.85rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        margin-top: 40px;
     }
     </style>
     """,
@@ -163,10 +134,22 @@ def get_score_color_class(score: int) -> str:
     return "score-low"
 
 
-def render_sidebar() -> tuple[str, str]:
-    """Renders application sidebar for user controls and settings."""
+def render_sidebar() -> tuple[str, str, str]:
+    """Renders application sidebar for user controls, settings, model selection, and sample loader."""
     with st.sidebar:
-        st.markdown("### ⚙️ Settings & Context")
+        # Sidebar Logo Header
+        if os.path.exists("assets/logo.svg"):
+            st.image("assets/logo.svg", width=64)
+
+        st.markdown("### ⚙️ Settings & Options")
+
+        # Model Selector
+        model_choice = st.selectbox(
+            "AI Model Engine",
+            ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"],
+            index=0,
+            help="Select the Gemini model tier. If one model hits quota limits, the system automatically falls back.",
+        )
 
         # Target Job Role Context
         target_role = st.text_input(
@@ -177,10 +160,19 @@ def render_sidebar() -> tuple[str, str]:
 
         job_description = st.text_area(
             "Target Job Description (Optional)",
-            height=140,
+            height=130,
             placeholder="Paste job posting text here...",
             help="Paste the full job description text to calculate exact keyword match score and gap analysis.",
         )
+
+        st.markdown("---")
+        st.markdown("### 🧪 Quick 1-Click Demo")
+        if st.button("Load Sample Senior Developer Resume", use_container_width=True):
+            sample_text, sample_name, sample_jd = get_sample_resume_text()
+            st.session_state["demo_sample_text"] = sample_text
+            st.session_state["demo_sample_name"] = sample_name
+            st.session_state["demo_sample_jd"] = sample_jd
+            st.success("Sample resume & JD loaded! Click 'Analyze Resume' below.")
 
         st.markdown("---")
         st.markdown("### 🔑 System Status")
@@ -199,16 +191,25 @@ def render_sidebar() -> tuple[str, str]:
                 st.session_state["custom_api_key"] = user_key
                 st.info("Using temporary session API key")
 
+        with st.expander("💡 How to get a free API Key (30s)", expanded=False):
+            st.markdown(
+                """
+                1. Visit **[Google AI Studio](https://aistudio.google.com/)**
+                2. Click **Create API Key**
+                3. Copy your key and paste it above!
+                """
+            )
+
         st.markdown("---")
         st.markdown(
             """
-            **About AI Resume Analyzer**
-            - **Model**: `Gemini 2.5 Flash`
-            - **Supported Formats**: PDF, DOCX
-            - **Features**: ATS Scoring, Skill Gaps, JD Matching
+            🔒 **Enterprise Data Security**
+            - **Processing**: 100% In-Memory
+            - **Privacy**: No files saved to disk
+            - **Engine**: Google Gemini API
             """
         )
-        return target_role, job_description
+        return target_role, job_description, model_choice
 
 
 def render_dashboard(result: dict) -> None:
@@ -234,6 +235,16 @@ def render_dashboard(result: dict) -> None:
             """,
             unsafe_allow_html=True,
         )
+        # Visual Progress Bar
+        st.progress(score / 100)
+
+        breakdown = result.get("score_breakdown", {})
+        if breakdown:
+            with st.expander("🔍 View Score Category Breakdown", expanded=False):
+                st.caption(f"📐 **Formatting**: {breakdown.get('structure_formatting', 0)}/20")
+                st.caption(f"🛠️ **Technical Skills**: {breakdown.get('technical_skills', 0)}/30")
+                st.caption(f"📈 **Quantifiable Impact**: {breakdown.get('quantifiable_results', 0)}/30")
+                st.caption(f"🎓 **Experience Fit**: {breakdown.get('experience_fit', 0)}/20")
 
     with col_meta:
         st.markdown("### 📝 Executive Summary")
@@ -248,6 +259,9 @@ def render_dashboard(result: dict) -> None:
         with c3:
             jd_score = result.get("jd_match_score", 0)
             st.metric("JD Match Score", f"{jd_score}%" if has_jd else "N/A (No JD)")
+
+        if meta.get("cached"):
+            st.caption("⚡ **Loaded from Cache** — 0 API tokens consumed.")
 
     st.markdown("---")
 
@@ -353,18 +367,50 @@ def render_dashboard(result: dict) -> None:
                     unsafe_allow_html=True,
                 )
 
+    # Export & Download Section
+    st.markdown("---")
+    st.markdown("### 📥 Export Evaluation Report")
+    col_dl1, col_dl2 = st.columns(2)
+
+    filename_stem = meta.get("filename", "resume").rsplit(".", 1)[0]
+
+    with col_dl1:
+        st.download_button(
+            label="📄 Download Formatted Text Report (.txt)",
+            data=generate_text_report(result),
+            file_name=f"{filename_stem}_analysis_report.txt",
+            mime="text/plain",
+            use_container_width=True,
+        )
+
+    with col_dl2:
+        st.download_button(
+            label="📊 Download Structured Data Payload (.json)",
+            data=generate_json_report(result),
+            file_name=f"{filename_stem}_analysis_report.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+
 
 def main() -> None:
     """Main application flow execution."""
-    # App Header
-    st.markdown('<div class="hero-title">AI Resume Analyzer</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="hero-subtitle">Production-grade ATS scoring, skill gap detection, and job description matching powered by Gemini AI</div>',
-        unsafe_allow_html=True,
-    )
+    # App Header with Logo
+    col_logo, col_title = st.columns([1, 10])
+    with col_logo:
+        if os.path.exists("assets/logo.svg"):
+            st.image("assets/logo.svg", width=72)
+    with col_title:
+        st.markdown('<div class="hero-title">AI Resume Analyzer</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="hero-subtitle">Production-grade ATS scoring, skill gap detection, and job description matching powered by Gemini AI</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown('<span class="trust-badge">🔒 Privacy Guarantee: 100% In-Memory Processing — No Resume Files Retained</span>', unsafe_allow_html=True)
 
     # Render Sidebar
-    target_role, job_description = render_sidebar()
+    target_role, job_description, model_choice = render_sidebar()
 
     # File Uploader Widget
     uploaded_file = st.file_uploader(
@@ -373,12 +419,26 @@ def main() -> None:
         help="Supported formats: .pdf, .docx. Maximum file size: 5MB",
     )
 
+    # Check for Sample Demo Loader
+    demo_sample_text = st.session_state.get("demo_sample_text")
+    demo_sample_name = st.session_state.get("demo_sample_name")
+    demo_sample_jd = st.session_state.get("demo_sample_jd")
+
     if uploaded_file is not None:
-        file_bytes = uploaded_file.getvalue()
+        file_source = uploaded_file.getvalue()
         filename = uploaded_file.name
+        st.success(f"File uploaded successfully: `{filename}` ({len(file_source)/1024:.1f} KB)")
+    elif demo_sample_text:
+        file_source = demo_sample_text
+        filename = demo_sample_name
+        if not job_description:
+            job_description = demo_sample_jd
+        st.info(f"Loaded Sample Resume: `{filename}`")
+    else:
+        file_source = None
+        filename = ""
 
-        st.success(f"File uploaded successfully: `{filename}` ({len(file_bytes)/1024:.1f} KB)")
-
+    if file_source is not None:
         # Analyze Button
         if st.button("🚀 Analyze Resume", type="primary", use_container_width=True):
             with st.spinner("Processing document & running AI evaluation..."):
@@ -390,12 +450,12 @@ def main() -> None:
                         st.stop()
 
                     from src.llm import GeminiClient
-                    llm_client = GeminiClient(api_key=custom_key)
+                    llm_client = GeminiClient(api_key=custom_key, model_name=model_choice)
                     analyzer = ResumeAnalyzer(llm_client=llm_client)
 
                     # Trigger Analysis Pipeline
                     result = analyzer.analyze(
-                        file_source=file_bytes,
+                        file_source=file_source,
                         filename=filename,
                         target_role=target_role,
                         job_description=job_description,
@@ -410,6 +470,8 @@ def main() -> None:
                     st.error(f"Text extraction failed: {str(e)}")
                 except LLMAuthenticationError as e:
                     st.error(f"Authentication Error: {str(e)}")
+                except LLMQuotaExhaustedError as e:
+                    st.warning(f"⏳ **Quota Limit Reached**: {str(e)}")
                 except AnalysisError as e:
                     st.error(f"Analysis failed: {str(e)}")
                 except Exception as e:
@@ -419,6 +481,17 @@ def main() -> None:
     # Render existing analysis result from session state if available
     if "analysis_result" in st.session_state:
         render_dashboard(st.session_state["analysis_result"])
+
+    # Production Footer
+    st.markdown(
+        """
+        <div class="footer">
+            AI Resume Analyzer ⚡ v1.0.0 (Production Build)<br/>
+            Engineered with Python 3.13, Streamlit & Google Gemini API • MIT License
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 if __name__ == "__main__":
