@@ -37,8 +37,20 @@ class ResumeAnalyzer:
             llm_client: Optional GeminiClient instance.
         """
         self.parser = parser or ResumeParser()
-        self.llm_client = llm_client or GeminiClient()
+        self._llm_client = llm_client
         logger.info("ResumeAnalyzer service initialized successfully.")
+
+    @property
+    def llm_client(self) -> GeminiClient:
+        """Lazy loads GeminiClient instance when accessed."""
+        if self._llm_client is None:
+            self._llm_client = GeminiClient()
+        return self._llm_client
+
+    @llm_client.setter
+    def llm_client(self, client: GeminiClient) -> None:
+        """Sets GeminiClient instance."""
+        self._llm_client = client
 
     def analyze(
         self,
@@ -110,3 +122,69 @@ class ResumeAnalyzer:
 
         logger.info(f"Analysis workflow completed successfully for '{filename}'.")
         return analysis_result
+
+    def generate_cover_letter(
+        self,
+        file_source: str | bytes,
+        filename: str,
+        target_role: str = "",
+        job_description: str = "",
+    ) -> dict:
+        """Parses file and generates a tailored Cover Letter."""
+        extracted_text = self.parser.parse_file(file_source, filename)
+        return self.llm_client.generate_cover_letter(extracted_text, target_role, job_description)
+
+    def enhance_bullet_point(self, bullet_text: str, target_role: str = "") -> dict:
+        """Enhances weak bullet point into 3 quantified action bullet points."""
+        return self.llm_client.enhance_bullet_point(bullet_text, target_role)
+
+    def predict_interview_questions(
+        self,
+        file_source: str | bytes,
+        filename: str,
+        target_role: str = "",
+        job_description: str = "",
+    ) -> dict:
+        """Parses file and predicts 10 targeted interview questions (Tech + STAR)."""
+        extracted_text = self.parser.parse_file(file_source, filename)
+        return self.llm_client.predict_interview_questions(extracted_text, target_role, job_description)
+
+    def compare_resumes(
+        self,
+        file_source_a: str | bytes,
+        filename_a: str,
+        file_source_b: str | bytes,
+        filename_b: str,
+        target_role: str = "",
+        job_description: str = "",
+    ) -> dict:
+        """Parses 2 resumes and compares ATS compatibility scores and metrics side-by-side."""
+        res_a = self.analyze(file_source_a, filename_a, target_role, job_description)
+        res_b = self.analyze(file_source_b, filename_b, target_role, job_description)
+        return {
+            "resume_a": res_a,
+            "resume_b": res_b,
+            "winner": "resume_a" if res_a.get("ats_score", 0) >= res_b.get("ats_score", 0) else "resume_b",
+        }
+
+    def generate_outreach(
+        self,
+        file_source: str | bytes,
+        filename: str,
+        target_role: str = "",
+        company_name: str = "",
+        job_description: str = "",
+    ) -> dict:
+        """Parses file and generates recruiter & hiring manager cold outreach emails."""
+        extracted_text = self.parser.parse_file(file_source, filename)
+        return self.llm_client.generate_outreach(extracted_text, target_role, company_name, job_description)
+
+    def estimate_salary(
+        self,
+        file_source: str | bytes,
+        filename: str,
+        target_role: str = "",
+    ) -> dict:
+        """Parses file and estimates compensation ranges and negotiation leverage points."""
+        extracted_text = self.parser.parse_file(file_source, filename)
+        return self.llm_client.estimate_salary(extracted_text, target_role)

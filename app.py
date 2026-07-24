@@ -1,6 +1,6 @@
 """
 Streamlit Web Application Entrypoint
-AI Resume Analyzer Dashboard UI
+AI Resume Analyzer & Complete Resume Engineering Suite
 """
 
 import os
@@ -13,111 +13,308 @@ from src.llm import LLMAuthenticationError, LLMQuotaExhaustedError
 from src.utils import generate_text_report, generate_json_report, get_sample_resume_text
 
 # -----------------------------------------------------------------------------
-# Page Configuration & Modern Dark Glassmorphism Styling
+# Page Configuration & Glassmorphism Theme Setup
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="AI Resume Analyzer | Enterprise Edition",
+    page_title="AI Resume Analyzer ⚡",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Custom Glassmorphism Styling (CSS Injection)
+# Inject Neural Flow-Field Animated Background
+st.components.v1.html(
+    """
+    <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; overflow: hidden; background: #030712;">
+      <canvas id="neural-canvas" style="display: block; width: 100%; height: 100%;"></canvas>
+    </div>
+    <script>
+      const canvas = document.getElementById('neural-canvas');
+      const ctx = canvas.getContext('2d');
+      let width = window.innerWidth;
+      let height = window.innerHeight;
+      let particles = [];
+      let mouse = { x: -1000, y: -1000 };
+      const particleCount = 500;
+      const speed = 0.8;
+
+      class Particle {
+        constructor() {
+          this.x = Math.random() * width;
+          this.y = Math.random() * height;
+          this.vx = 0;
+          this.vy = 0;
+          this.age = 0;
+          this.life = Math.random() * 200 + 100;
+        }
+        update() {
+          const angle = (Math.cos(this.x * 0.005) + Math.sin(this.y * 0.005)) * Math.PI;
+          this.vx += Math.cos(angle) * 0.2 * speed;
+          this.vy += Math.sin(angle) * 0.2 * speed;
+
+          const dx = mouse.x - this.x;
+          const dy = mouse.y - this.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 150) {
+            const force = (150 - dist) / 150;
+            this.vx -= dx * force * 0.05;
+            this.vy -= dy * force * 0.05;
+          }
+
+          this.x += this.vx;
+          this.y += this.vy;
+          this.vx *= 0.95;
+          this.vy *= 0.95;
+          this.age++;
+
+          if (this.age > this.life) this.reset();
+          if (this.x < 0) this.x = width;
+          if (this.x > width) this.x = 0;
+          if (this.y < 0) this.y = height;
+          if (this.y > height) this.y = 0;
+        }
+        reset() {
+          this.x = Math.random() * width;
+          this.y = Math.random() * height;
+          this.vx = 0;
+          this.vy = 0;
+          this.age = 0;
+          this.life = Math.random() * 200 + 100;
+        }
+        draw(context) {
+          context.fillStyle = '#818cf8';
+          const alpha = 1 - Math.abs((this.age / this.life) - 0.5) * 2;
+          context.globalAlpha = alpha;
+          context.fillRect(this.x, this.y, 1.5, 1.5);
+        }
+      }
+
+      function init() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
+        particles = [];
+        for (let i = 0; i < particleCount; i++) particles.push(new Particle());
+      }
+
+      function animate() {
+        ctx.fillStyle = 'rgba(3, 7, 18, 0.15)';
+        ctx.fillRect(0, 0, width, height);
+        particles.forEach(p => { p.update(); p.draw(ctx); });
+        requestAnimationFrame(animate);
+      }
+
+      window.addEventListener('resize', () => { width = window.innerWidth; height = window.innerHeight; init(); });
+      window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+      window.addEventListener('mouseleave', () => { mouse.x = -1000; mouse.y = -1000; });
+
+      init();
+      animate();
+    </script>
+    """,
+    height=0,
+)
+
+# Custom Styling (CSS Injection - Full Streamlit Glassmorphic Overrides)
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
     html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+    }
+
+    .stApp, [data-testid="stAppViewContainer"] {
+        background-color: #030712 !important;
+    }
+
+    iframe[title="st.components.v1.html"] {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 0 !important;
+        pointer-events: none !important;
+        border: none !important;
     }
 
     .main .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 3rem;
-        max-width: 1200px;
+        position: relative !important;
+        z-index: 1 !important;
+        padding-top: 2rem !important;
+        padding-bottom: 4rem !important;
+        max-width: 1260px !important;
     }
 
-    .header-container {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        margin-bottom: 1.5rem;
+    [data-testid="stSidebar"] {
+        background: rgba(15, 23, 42, 0.75) !important;
+        backdrop-filter: blur(16px) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
     }
 
     .hero-title {
-        font-size: 2.5rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.1rem;
+        font-size: 3rem !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.02em !important;
+        background: linear-gradient(135deg, #818CF8 0%, #C084FC 45%, #F472B6 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        margin-bottom: 0.3rem !important;
     }
 
     .hero-subtitle {
-        color: #9CA3AF;
-        font-size: 1.05rem;
-        margin-bottom: 1rem;
+        color: #94A3B8 !important;
+        font-size: 1.15rem !important;
+        font-weight: 500 !important;
+        margin-bottom: 1.4rem !important;
     }
 
     .trust-badge {
-        display: inline-block;
-        background: rgba(16, 185, 129, 0.1);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        color: #34D399;
-        font-size: 0.82rem;
-        font-weight: 500;
-        padding: 4px 12px;
-        border-radius: 20px;
-        margin-bottom: 1.2rem;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        background: rgba(16, 185, 129, 0.1) !important;
+        border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        color: #34D399 !important;
+        font-size: 0.88rem !important;
+        font-weight: 600 !important;
+        padding: 6px 18px !important;
+        border-radius: 30px !important;
+        margin-bottom: 1.8rem !important;
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.2) !important;
     }
 
     .score-container {
-        text-align: center;
-        padding: 24px;
-        border-radius: 20px;
-        background: linear-gradient(145deg, rgba(30, 27, 75, 0.6), rgba(15, 23, 42, 0.8));
-        border: 1px solid rgba(99, 102, 241, 0.3);
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        text-align: center !important;
+        padding: 36px 24px !important;
+        border-radius: 24px !important;
+        background: radial-gradient(135% 100% at 50% 0%, rgba(99, 102, 241, 0.22) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+        border: 1px solid rgba(99, 102, 241, 0.4) !important;
+        box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(255, 255, 255, 0.15) !important;
+        backdrop-filter: blur(16px) !important;
+        transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+    }
+    .score-container:hover {
+        transform: translateY(-4px) !important;
+        box-shadow: 0 30px 70px -12px rgba(99, 102, 241, 0.35) !important;
     }
 
-    .score-number { font-size: 4.2rem; font-weight: 800; line-height: 1; }
-    .score-high { color: #10B981; }
-    .score-med { color: #F59E0B; }
-    .score-low { color: #EF4444; }
+    .score-number {
+        font-size: 5rem !important;
+        font-weight: 800 !important;
+        line-height: 1 !important;
+        letter-spacing: -0.03em !important;
+        margin: 14px 0 !important;
+    }
+    .score-high { color: #34D399 !important; text-shadow: 0 0 30px rgba(52, 211, 153, 0.5) !important; }
+    .score-med { color: #FBBF24 !important; text-shadow: 0 0 30px rgba(251, 191, 36, 0.5) !important; }
+    .score-low { color: #F87171 !important; text-shadow: 0 0 30px rgba(248, 113, 113, 0.5) !important; }
 
     .score-label {
-        font-size: 1rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: #D1D5DB;
+        font-size: 0.95rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 2px !important;
+        color: #94A3B8 !important;
     }
 
     .badge {
-        display: inline-block;
-        padding: 6px 14px;
-        margin: 4px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 500;
+        display: inline-block !important;
+        padding: 8px 18px !important;
+        margin: 6px !important;
+        border-radius: 20px !important;
+        font-size: 0.9rem !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
     }
-    .badge-tech { background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4); }
-    .badge-soft { background: rgba(168, 85, 247, 0.15); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4); }
-    .badge-missing { background: rgba(239, 68, 68, 0.15); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .badge:hover { transform: scale(1.06) !important; }
+    .badge-tech { background: rgba(99, 102, 241, 0.2) !important; color: #A5B4FC !important; border: 1px solid rgba(99, 102, 241, 0.5) !important; }
+    .badge-soft { background: rgba(168, 85, 247, 0.2) !important; color: #E9D5FF !important; border: 1px solid rgba(168, 85, 247, 0.5) !important; }
+    .badge-missing { background: rgba(239, 68, 68, 0.2) !important; color: #FCA5A5 !important; border: 1px solid rgba(239, 68, 68, 0.5) !important; }
 
-    .insight-card { padding: 16px; border-radius: 12px; margin-bottom: 12px; font-size: 0.95rem; }
-    .strength-item { background: rgba(16, 185, 129, 0.08); border-left: 4px solid #10B981; color: #E5E7EB; }
-    .weakness-item { background: rgba(245, 158, 11, 0.08); border-left: 4px solid #F59E0B; color: #E5E7EB; }
-    .suggestion-item { background: rgba(99, 102, 241, 0.08); border-left: 4px solid #6366F1; color: #E5E7EB; }
+    .insight-card {
+        padding: 20px 22px !important;
+        border-radius: 16px !important;
+        margin-bottom: 16px !important;
+        font-size: 0.98rem !important;
+        line-height: 1.65 !important;
+        backdrop-filter: blur(10px) !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    }
+    .insight-card:hover {
+        transform: translateX(6px) !important;
+    }
+    .strength-item {
+        background: rgba(16, 185, 129, 0.08) !important;
+        border-left: 4px solid #10B981 !important;
+        border-top: 1px solid rgba(16, 185, 129, 0.2) !important;
+        border-right: 1px solid rgba(16, 185, 129, 0.2) !important;
+        border-bottom: 1px solid rgba(16, 185, 129, 0.2) !important;
+        color: #F8FAFC !important;
+    }
+    .weakness-item {
+        background: rgba(245, 158, 11, 0.08) !important;
+        border-left: 4px solid #F59E0B !important;
+        border-top: 1px solid rgba(245, 158, 11, 0.2) !important;
+        border-right: 1px solid rgba(245, 158, 11, 0.2) !important;
+        border-bottom: 1px solid rgba(245, 158, 11, 0.2) !important;
+        color: #F8FAFC !important;
+    }
+    .suggestion-item {
+        background: rgba(99, 102, 241, 0.08) !important;
+        border-left: 4px solid #6366F1 !important;
+        border-top: 1px solid rgba(99, 102, 241, 0.2) !important;
+        border-right: 1px solid rgba(99, 102, 241, 0.2) !important;
+        border-bottom: 1px solid rgba(99, 102, 241, 0.2) !important;
+        color: #F8FAFC !important;
+    }
+
+    .stButton > button {
+        border-radius: 14px !important;
+        font-weight: 700 !important;
+        padding: 12px 24px !important;
+        background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%) !important;
+        border: none !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35) !important;
+        transition: all 0.25s ease !important;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5) !important;
+    }
+
+    button[data-baseweb="tab"] {
+        font-weight: 700 !important;
+        font-size: 0.98rem !important;
+        padding: 12px 24px !important;
+        border-radius: 12px !important;
+        color: #94A3B8 !important;
+    }
+    button[aria-selected="true"] {
+        color: #818CF8 !important;
+        background: rgba(99, 102, 241, 0.12) !important;
+        border-bottom: 2px solid #818CF8 !important;
+    }
+
+    [data-testid="stFileUploader"] {
+        background: rgba(15, 23, 42, 0.6) !important;
+        border: 2px dashed rgba(99, 102, 241, 0.4) !important;
+        border-radius: 18px !important;
+        padding: 24px !important;
+        backdrop-filter: blur(10px) !important;
+    }
 
     .footer {
-        text-align: center;
-        padding: 24px;
-        color: #6B7280;
-        font-size: 0.85rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        margin-top: 40px;
+        text-align: center !important;
+        padding: 36px 20px !important;
+        color: #64748B !important;
+        font-size: 0.9rem !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        margin-top: 60px !important;
     }
     </style>
     """,
@@ -134,35 +331,48 @@ def get_score_color_class(score: int) -> str:
     return "score-low"
 
 
-def render_sidebar() -> tuple[str, str, str]:
-    """Renders application sidebar for user controls, settings, model selection, and sample loader."""
+def render_sidebar() -> tuple[str, str, str, str]:
+    """Renders application sidebar for Resume Engineering modules and system status."""
     with st.sidebar:
-        # Sidebar Logo Header
         if os.path.exists("assets/logo.svg"):
             st.image("assets/logo.svg", width=64)
 
+        st.markdown("### 🧭 Resume Suite Modules")
+        module_nav = st.radio(
+            "Select Resume Tool",
+            [
+                "📊 AI Resume Analyzer",
+                "📝 Cover Letter Generator",
+                "⚡ Bullet Point Enhancer",
+                "🆚 Resume A/B Comparison",
+                "🎯 Resume Interview Predictor",
+                "📧 Recruiter Outreach Generator",
+                "💼 Salary & Readiness Estimator",
+            ],
+            index=0,
+        )
+
+        st.markdown("---")
         st.markdown("### ⚙️ Settings & Options")
 
-        # Model Selector
         model_choice = st.selectbox(
             "AI Model Engine",
             ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"],
             index=0,
-            help="Select the Gemini model tier. If one model hits quota limits, the system automatically falls back.",
+            help="Select the Gemini model tier.",
         )
 
-        # Target Job Role Context
         target_role = st.text_input(
             "Target Job Title (Optional)",
             placeholder="e.g., Senior Full Stack Developer",
-            help="Providing a target role improves keyword alignment and missing skill detection.",
+            help="Providing a target role improves keyword alignment.",
         )
 
         job_description = st.text_area(
             "Target Job Description (Optional)",
-            height=130,
-            placeholder="Paste job posting text here...",
-            help="Paste the full job description text to calculate exact keyword match score and gap analysis.",
+            height=120,
+            placeholder="Paste target job description text here...",
+            help="Paste full job description for targeted JD matching.",
         )
 
         st.markdown("---")
@@ -177,7 +387,6 @@ def render_sidebar() -> tuple[str, str, str]:
         st.markdown("---")
         st.markdown("### 🔑 System Status")
 
-        # API Key Status indicator
         if config.GEMINI_API_KEY:
             st.success("Gemini API Key: Configured (.env)")
         else:
@@ -205,14 +414,28 @@ def render_sidebar() -> tuple[str, str, str]:
             """
             🔒 **Enterprise Data Security**
             - **Processing**: 100% In-Memory
-            - **Privacy**: No files saved to disk
-            - **Engine**: Google Gemini API
+            - **Privacy**: Zero File Retention
             """
         )
-        return target_role, job_description, model_choice
+        return module_nav, target_role, job_description, model_choice
 
 
-def render_dashboard(result: dict) -> None:
+def get_analyzer(model_choice: str) -> ResumeAnalyzer:
+    """Helper function to lazily initialize ResumeAnalyzer with API key validation."""
+    custom_key = st.session_state.get("custom_api_key") or config.GEMINI_API_KEY
+    if not custom_key:
+        st.error("🔑 **Gemini API Key Missing**: Please enter your Gemini API key in the sidebar under 'System Status' or add `GEMINI_API_KEY=your_key` to a `.env` file.")
+        st.stop()
+    from src.llm import GeminiClient
+    llm_client = GeminiClient(api_key=custom_key, model_name=model_choice)
+    return ResumeAnalyzer(llm_client=llm_client)
+
+
+# -----------------------------------------------------------------------------
+# Module Renderers
+# -----------------------------------------------------------------------------
+
+def render_resume_analyzer_dashboard(result: dict) -> None:
     """Renders structured analysis results in visual cards and tabs."""
     score = result.get("ats_score", 0)
     meta = result.get("meta", {})
@@ -221,7 +444,6 @@ def render_dashboard(result: dict) -> None:
 
     st.markdown("## 📊 Analysis Dashboard")
 
-    # Header Stats Row
     col_score, col_meta = st.columns([1, 2])
 
     with col_score:
@@ -235,7 +457,6 @@ def render_dashboard(result: dict) -> None:
             """,
             unsafe_allow_html=True,
         )
-        # Visual Progress Bar
         st.progress(score / 100)
 
         breakdown = result.get("score_breakdown", {})
@@ -250,7 +471,6 @@ def render_dashboard(result: dict) -> None:
         st.markdown("### 📝 Executive Summary")
         st.info(result.get("summary", "No summary generated."))
 
-        # Quick file metadata stats
         c1, c2, c3 = st.columns(3)
         with c1:
             st.metric("Document Name", meta.get("filename", "N/A"))
@@ -265,13 +485,12 @@ def render_dashboard(result: dict) -> None:
 
     st.markdown("---")
 
-    # Dynamic Tabs Setup
-    tab_titles = ["🎯 Skills Assessment", "⚡ Strengths & Weaknesses", "🚀 Action Plan & Suggestions"]
+    tab_titles = ["🎯 Skills Assessment", "⚡ Strengths & Weaknesses", "🚀 Action Plan & Suggestions", "📋 Pre-Application Checklist"]
     if has_jd:
         tab_titles.append("📋 Job Description Match")
 
     tabs = st.tabs(tab_titles)
-    tab_skills, tab_swot, tab_action = tabs[0], tabs[1], tabs[2]
+    tab_skills, tab_swot, tab_action, tab_check = tabs[0], tabs[1], tabs[2], tabs[3]
 
     with tab_skills:
         col_tech, col_soft, col_miss = st.columns(3)
@@ -333,8 +552,16 @@ def render_dashboard(result: dict) -> None:
                 unsafe_allow_html=True,
             )
 
+    with tab_check:
+        st.markdown("#### 📋 Pre-Application Pre-Flight Checklist")
+        st.checkbox("✔️ Formatting: Clean 1-page layout without tables or graphics", value=score >= 70)
+        st.checkbox("✔️ Contact Details: Email, LinkedIn, GitHub, Phone number present", value=True)
+        st.checkbox("✔️ Quantified Metrics: Metrics (% increase, throughput, cost savings) included in bullets", value=breakdown.get("quantifiable_results", 0) >= 15)
+        st.checkbox("✔️ Strong Action Verbs: Engineered, Architected, Spearheaded used at bullet starts", value=True)
+        st.checkbox("✔️ Target Role Alignment: Technical skills match target industry expectations", value=score >= 80)
+
     if has_jd:
-        tab_jd = tabs[3]
+        tab_jd = tabs[4]
         with tab_jd:
             st.markdown("#### 📋 Target Job Description Comparison")
 
@@ -393,100 +620,322 @@ def render_dashboard(result: dict) -> None:
         )
 
 
+def render_cover_letter_module(model_choice: str, target_role: str, job_description: str) -> None:
+    """Renders Module 2: AI Tailored Cover Letter Generator."""
+    st.markdown("## 📝 AI Tailored Cover Letter Generator")
+    st.markdown("Generate a persuasive, customized 3-paragraph Cover Letter tailored to your target job.")
+
+    uploaded_file = st.file_uploader(
+        "Upload Resume for Cover Letter",
+        type=["pdf", "docx"],
+        key="cl_uploader",
+    )
+
+    if uploaded_file is not None:
+        file_bytes = uploaded_file.getvalue()
+        filename = uploaded_file.name
+
+        if st.button("✨ Generate Custom Cover Letter", type="primary", use_container_width=True):
+            with st.spinner("Drafting tailored cover letter with Gemini AI..."):
+                try:
+                    analyzer = get_analyzer(model_choice)
+                    cl_result = analyzer.generate_cover_letter(file_bytes, filename, target_role, job_description)
+                    st.session_state["cl_result"] = cl_result
+                except Exception as e:
+                    st.error(f"Cover Letter generation error: {str(e)}")
+
+    if "cl_result" in st.session_state:
+        cl_data = st.session_state["cl_result"]
+        cover_text = cl_data.get("cover_letter", "")
+
+        st.markdown("---")
+        st.markdown("### 📄 Generated Cover Letter")
+        st.text_area("Cover Letter Text", value=cover_text, height=320)
+
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.download_button(
+                label="📥 Download Cover Letter (.txt)",
+                data=cover_text,
+                file_name="tailored_cover_letter.txt",
+                mime="text/plain",
+                use_container_width=True,
+            )
+        with col_c2:
+            st.info("💡 Highlighted Skills: " + ", ".join(cl_data.get("key_highlights", [])))
+
+
+def render_bullet_enhancer_module(model_choice: str, target_role: str) -> None:
+    """Renders Module 3: AI Bullet Point Enhancer & Action Verb Rewriter."""
+    st.markdown("## ⚡ AI Bullet Point Enhancer & Metric Rewriter")
+    st.markdown("Transform weak, passive bullet points into high-impact, quantified achievements using the Google XYZ formula.")
+
+    weak_bullet = st.text_input(
+        "Paste Weak Resume Bullet Point",
+        placeholder="e.g. Worked on Python backend API and fixed bugs for the team",
+    )
+
+    if st.button("🚀 Enhance Bullet Point", type="primary", use_container_width=True):
+        if not weak_bullet.strip():
+            st.warning("Please paste a bullet point to enhance.")
+        else:
+            with st.spinner("Rewriting with action verbs and quantifiable metrics..."):
+                try:
+                    analyzer = get_analyzer(model_choice)
+                    enhanced = analyzer.enhance_bullet_point(weak_bullet, target_role)
+                    st.session_state["bullet_enhanced"] = enhanced
+                except Exception as e:
+                    st.error(f"Enhancement error: {str(e)}")
+
+    if "bullet_enhanced" in st.session_state:
+        data = st.session_state["bullet_enhanced"]
+        st.markdown("---")
+        st.markdown("### 🌟 High-Impact Bullet Point Rewrites")
+
+        for item in data.get("rewrites", []):
+            st.markdown(f"**Style: {item.get('style', 'Quantified')}**")
+            st.code(item.get("bullet", ""), language="markdown")
+
+
+def render_ab_tester_module(model_choice: str, target_role: str, job_description: str) -> None:
+    """Renders Module 4: Side-by-Side Resume A/B Comparison."""
+    st.markdown("## 🆚 Side-by-Side Resume A/B Comparison")
+    st.markdown("Upload two versions of your resume to compare ATS compatibility scores and skill counts side-by-side.")
+
+    c_a, c_b = st.columns(2)
+    with c_a:
+        file_a = st.file_uploader("Upload Resume Version A", type=["pdf", "docx"], key="ab_a")
+    with c_b:
+        file_b = st.file_uploader("Upload Resume Version B", type=["pdf", "docx"], key="ab_b")
+
+    if file_a and file_b:
+        if st.button("⚡ Run Side-by-Side A/B Comparison", type="primary", use_container_width=True):
+            with st.spinner("Evaluating both resume versions..."):
+                try:
+                    analyzer = get_analyzer(model_choice)
+                    ab_result = analyzer.compare_resumes(
+                        file_a.getvalue(), file_a.name,
+                        file_b.getvalue(), file_b.name,
+                        target_role, job_description,
+                    )
+                    st.session_state["ab_result"] = ab_result
+                except Exception as e:
+                    st.error(f"A/B comparison error: {str(e)}")
+
+    if "ab_result" in st.session_state:
+        ab_data = st.session_state["ab_result"]
+        res_a, res_b = ab_data["resume_a"], ab_data["resume_b"]
+
+        st.markdown("---")
+        st.markdown("### 🏆 Comparison Results")
+
+        winner_label = "Version A" if ab_data["winner"] == "resume_a" else "Version B"
+        st.success(f"🎉 **Winning Version: {winner_label}**")
+
+        col_m_a, col_m_b = st.columns(2)
+        with col_m_a:
+            st.markdown("### 📄 Resume Version A")
+            st.metric("ATS Score", f"{res_a.get('ats_score', 0)}/100")
+            st.metric("Technical Skills Count", len(res_a.get("technical_skills", [])))
+            st.info(res_a.get("summary", "N/A"))
+
+        with col_m_b:
+            st.markdown("### 📄 Resume Version B")
+            st.metric("ATS Score", f"{res_b.get('ats_score', 0)}/100")
+            st.metric("Technical Skills Count", len(res_b.get("technical_skills", [])))
+            st.info(res_b.get("summary", "N/A"))
+
+
+def render_mock_predictor_module(model_choice: str, target_role: str, job_description: str) -> None:
+    """Renders Module 5: AI Resume Mock Interview Predictor."""
+    st.markdown("## 🎯 Resume AI Mock Interview Predictor")
+    st.markdown("Predict 10 targeted Technical & STAR Behavioral questions based on your resume and target JD.")
+
+    uploaded_file = st.file_uploader("Upload Resume for Question Prediction", type=["pdf", "docx"], key="mock_uploader")
+
+    if uploaded_file is not None:
+        if st.button("🚀 Predict My Interview Questions", type="primary", use_container_width=True):
+            with st.spinner("Analyzing resume against recruiter expectations..."):
+                try:
+                    analyzer = get_analyzer(model_choice)
+                    q_result = analyzer.predict_interview_questions(uploaded_file.getvalue(), uploaded_file.name, target_role, job_description)
+                    st.session_state["mock_questions"] = q_result
+                except Exception as e:
+                    st.error(f"Prediction error: {str(e)}")
+
+    if "mock_questions" in st.session_state:
+        q_data = st.session_state["mock_questions"]
+        st.markdown("---")
+        st.markdown("#### 💻 Predicted Technical Questions")
+        for idx, q in enumerate(q_data.get("technical_questions", []), 1):
+            with st.expander(f"Tech Q{idx}: {q.get('question', '')}", expanded=False):
+                st.caption(f"Topic: {q.get('topic', 'Core Tech')}")
+                st.success(f"Strategy: {q.get('answer_strategy', '')}")
+
+        st.markdown("#### 🗣️ Predicted Behavioral Questions (STAR Method)")
+        for idx, q in enumerate(q_data.get("behavioral_questions", []), 1):
+            with st.expander(f"Behavioral Q{idx}: {q.get('question', '')}", expanded=False):
+                st.caption(f"Competency: {q.get('competency', 'Leadership')}")
+                st.info(f"STAR Guidance: {q.get('star_framework', '')}")
+
+
+def render_outreach_module(model_choice: str, target_role: str, job_description: str) -> None:
+    """Renders Module 6: Recruiter Cold Email & LinkedIn Outreach Generator."""
+    st.markdown("## 📧 Recruiter Cold Email & LinkedIn Outreach Generator")
+    st.markdown("Generate personalized cold emails and LinkedIn connection notes tailored to recruiters and hiring managers.")
+
+    company_name = st.text_input("Target Company Name", placeholder="e.g. Google / Microsoft / Amazon")
+    uploaded_file = st.file_uploader("Upload Resume for Context", type=["pdf", "docx"], key="outreach_uploader")
+
+    if uploaded_file is not None:
+        if st.button("🚀 Generate Outreach Messages", type="primary", use_container_width=True):
+            with st.spinner("Crafting high-converting recruiter cold outreach messages..."):
+                try:
+                    analyzer = get_analyzer(model_choice)
+                    outreach_res = analyzer.generate_outreach(uploaded_file.getvalue(), uploaded_file.name, target_role, company_name, job_description)
+                    st.session_state["outreach_res"] = outreach_res
+                except Exception as e:
+                    st.error(f"Outreach generation error: {str(e)}")
+
+    if "outreach_res" in st.session_state:
+        o_data = st.session_state["outreach_res"]
+        st.markdown("---")
+
+        r_email = o_data.get("recruiter_email", {})
+        st.markdown("### 📩 Recruiter Cold Email Template")
+        st.text_input("Subject Line", value=r_email.get("subject", ""), key="rec_subj")
+        st.text_area("Email Body", value=r_email.get("body", ""), height=220, key="rec_body")
+
+        h_email = o_data.get("hiring_manager_email", {})
+        st.markdown("### 👔 Hiring Manager Direct Outreach Email")
+        st.text_input("Subject Line", value=h_email.get("subject", ""), key="hm_subj")
+        st.text_area("Email Body", value=h_email.get("body", ""), height=220, key="hm_body")
+
+        st.markdown("### 💬 LinkedIn Connection Note (< 300 chars)")
+        st.code(o_data.get("linkedin_note", ""), language="markdown")
+
+
+def render_salary_estimator_module(model_choice: str, target_role: str) -> None:
+    """Renders Module 7: Salary & Compensation Range Estimator."""
+    st.markdown("## 💼 Salary & Compensation Range Estimator")
+    st.markdown("Estimate market compensation ranges and key negotiation leverage points based on your technical skills.")
+
+    uploaded_file = st.file_uploader("Upload Resume for Salary Estimation", type=["pdf", "docx"], key="salary_uploader")
+
+    if uploaded_file is not None:
+        if st.button("💰 Estimate Market Salary Range", type="primary", use_container_width=True):
+            with st.spinner("Analyzing market compensation data..."):
+                try:
+                    analyzer = get_analyzer(model_choice)
+                    sal_res = analyzer.estimate_salary(uploaded_file.getvalue(), uploaded_file.name, target_role)
+                    st.session_state["salary_res"] = sal_res
+                except Exception as e:
+                    st.error(f"Salary estimation error: {str(e)}")
+
+    if "salary_res" in st.session_state:
+        s_data = st.session_state["salary_res"]
+        st.markdown("---")
+        st.markdown(f"### 🏷️ Assessed Seniority Tier: `{s_data.get('seniority_level', 'Mid-Level')}`")
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.metric("Estimated Min Base", f"${s_data.get('estimated_min_usd', 0):,} / yr")
+        with c2:
+            st.metric("Estimated Median Base", f"${s_data.get('estimated_median_usd', 0):,} / yr")
+        with c3:
+            st.metric("Estimated Max Base", f"${s_data.get('estimated_max_usd', 0):,} / yr")
+
+        st.markdown("#### 🌟 Top Value-Driving Skills")
+        for skill in s_data.get("top_value_skills", []):
+            st.markdown(f"• `{skill}`")
+
+        st.markdown("#### 💡 Salary Negotiation Leverage Points")
+        for p in s_data.get("negotiation_leverage_points", []):
+            st.info(f"✔️ {p}")
+
+
+# -----------------------------------------------------------------------------
+# Main Application Flow
+# -----------------------------------------------------------------------------
+
 def main() -> None:
     """Main application flow execution."""
-    # App Header with Logo
     col_logo, col_title = st.columns([1, 10])
     with col_logo:
         if os.path.exists("assets/logo.svg"):
             st.image("assets/logo.svg", width=72)
     with col_title:
-        st.markdown('<div class="hero-title">AI Resume Analyzer</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hero-title">AI Resume Analyzer ⚡</div>', unsafe_allow_html=True)
         st.markdown(
-            '<div class="hero-subtitle">Production-grade ATS scoring, skill gap detection, and job description matching powered by Gemini AI</div>',
+            '<div class="hero-subtitle">Complete Resume Intelligence Suite • ATS Scoring, Cover Letter Builder, Bullet Enhancer, Outreach & Salary Estimator</div>',
             unsafe_allow_html=True,
         )
 
     st.markdown('<span class="trust-badge">🔒 Privacy Guarantee: 100% In-Memory Processing — No Resume Files Retained</span>', unsafe_allow_html=True)
 
-    # Render Sidebar
-    target_role, job_description, model_choice = render_sidebar()
+    module_nav, target_role, job_description, model_choice = render_sidebar()
 
-    # File Uploader Widget
-    uploaded_file = st.file_uploader(
-        "Upload your Resume (PDF or DOCX)",
-        type=["pdf", "docx"],
-        help="Supported formats: .pdf, .docx. Maximum file size: 5MB",
-    )
+    if module_nav == "📊 AI Resume Analyzer":
+        uploaded_file = st.file_uploader(
+            "Upload your Resume (PDF or DOCX)",
+            type=["pdf", "docx"],
+            help="Supported formats: .pdf, .docx. Maximum file size: 5MB",
+        )
 
-    # Check for Sample Demo Loader
-    demo_sample_text = st.session_state.get("demo_sample_text")
-    demo_sample_name = st.session_state.get("demo_sample_name")
-    demo_sample_jd = st.session_state.get("demo_sample_jd")
+        demo_sample_text = st.session_state.get("demo_sample_text")
+        demo_sample_name = st.session_state.get("demo_sample_name")
+        demo_sample_jd = st.session_state.get("demo_sample_jd")
 
-    if uploaded_file is not None:
-        file_source = uploaded_file.getvalue()
-        filename = uploaded_file.name
-        st.success(f"File uploaded successfully: `{filename}` ({len(file_source)/1024:.1f} KB)")
-    elif demo_sample_text:
-        file_source = demo_sample_text
-        filename = demo_sample_name
-        if not job_description:
-            job_description = demo_sample_jd
-        st.info(f"Loaded Sample Resume: `{filename}`")
-    else:
-        file_source = None
-        filename = ""
+        if uploaded_file is not None:
+            file_source = uploaded_file.getvalue()
+            filename = uploaded_file.name
+            st.success(f"File uploaded successfully: `{filename}` ({len(file_source)/1024:.1f} KB)")
+        elif demo_sample_text:
+            file_source = demo_sample_text
+            filename = demo_sample_name
+            if not job_description:
+                job_description = demo_sample_jd
+            st.info(f"Loaded Sample Resume: `{filename}`")
+        else:
+            file_source = None
+            filename = ""
 
-    if file_source is not None:
-        # Analyze Button
-        if st.button("🚀 Analyze Resume", type="primary", use_container_width=True):
-            with st.spinner("Processing document & running AI evaluation..."):
-                try:
-                    # Check API Key from sidebar or .env config
-                    custom_key = st.session_state.get("custom_api_key") or config.GEMINI_API_KEY
-                    if not custom_key:
-                        st.error("🔑 **Gemini API Key missing.** Please enter your Gemini API key in the sidebar or add `GEMINI_API_KEY=your_key` to a `.env` file.")
-                        st.stop()
+        if file_source is not None:
+            if st.button("🚀 Analyze Resume", type="primary", use_container_width=True):
+                with st.spinner("Processing document & running AI evaluation..."):
+                    try:
+                        analyzer = get_analyzer(model_choice)
+                        result = analyzer.analyze(file_source, filename, target_role, job_description)
+                        st.session_state["analysis_result"] = result
+                    except Exception as e:
+                        st.error(f"Analysis Error: {str(e)}")
 
-                    from src.llm import GeminiClient
-                    llm_client = GeminiClient(api_key=custom_key, model_name=model_choice)
-                    analyzer = ResumeAnalyzer(llm_client=llm_client)
+        if "analysis_result" in st.session_state:
+            render_resume_analyzer_dashboard(st.session_state["analysis_result"])
 
-                    # Trigger Analysis Pipeline
-                    result = analyzer.analyze(
-                        file_source=file_source,
-                        filename=filename,
-                        target_role=target_role,
-                        job_description=job_description,
-                    )
+    elif module_nav == "📝 Cover Letter Generator":
+        render_cover_letter_module(model_choice, target_role, job_description)
 
-                    # Store result in session state
-                    st.session_state["analysis_result"] = result
+    elif module_nav == "⚡ Bullet Point Enhancer":
+        render_bullet_enhancer_module(model_choice, target_role)
 
-                except UnsupportedFileTypeError as e:
-                    st.error(f"Invalid file format: {str(e)}")
-                except ParsingError as e:
-                    st.error(f"Text extraction failed: {str(e)}")
-                except LLMAuthenticationError as e:
-                    st.error(f"Authentication Error: {str(e)}")
-                except LLMQuotaExhaustedError as e:
-                    st.warning(f"⏳ **Quota Limit Reached**: {str(e)}")
-                except AnalysisError as e:
-                    st.error(f"Analysis failed: {str(e)}")
-                except Exception as e:
-                    st.error(f"An unexpected error occurred: {str(e)}")
-                    logger.error(f"Unhandled Streamlit UI exception: {str(e)}", exc_info=True)
+    elif module_nav == "🆚 Resume A/B Comparison":
+        render_ab_tester_module(model_choice, target_role, job_description)
 
-    # Render existing analysis result from session state if available
-    if "analysis_result" in st.session_state:
-        render_dashboard(st.session_state["analysis_result"])
+    elif module_nav == "🎯 Resume Interview Predictor":
+        render_mock_predictor_module(model_choice, target_role, job_description)
+
+    elif module_nav == "📧 Recruiter Outreach Generator":
+        render_outreach_module(model_choice, target_role, job_description)
+
+    elif module_nav == "💼 Salary & Readiness Estimator":
+        render_salary_estimator_module(model_choice, target_role)
 
     # Production Footer
     st.markdown(
         """
         <div class="footer">
-            AI Resume Analyzer ⚡ v1.0.0 (Production Build)<br/>
+            AI Resume Analyzer ⚡ v2.5.0<br/>
             Engineered with Python 3.13, Streamlit & Google Gemini API • MIT License
         </div>
         """,

@@ -1,119 +1,102 @@
-# AI Resume Analyzer ⚡
+# AI Resume Analyzer ⚡ (v2.5 Platform Build)
 
 [![Python Version](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B.svg)](https://streamlit.io/)
 [![Google Gemini API](https://img.shields.io/badge/Google%20Gemini-2.5%20Flash-4285F4.svg)](https://ai.google.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A production-grade, portfolio-quality **AI Resume Analyzer** built with **Python 3.13**, **Streamlit**, and the **Google Gemini API**. 
-
-The application enables job applicants and recruiters to upload resumes in **PDF** or **DOCX** format and receive instant, structured AI evaluation, including ATS compatibility scoring, skill gap detection, strengths/weaknesses identification, and actionable feedback.
+**AI Resume Analyzer** is an enterprise-grade, portfolio-defining SaaS platform engineered with **Python 3.13**, **Streamlit**, and **Google Gemini 2.5 Flash**. It provides candidates and tech professionals with a complete 360° suite of resume tools—from ATS Resume Scoring and Cover Letter Generation to Recruiter Cold Email Crafting and Market Salary Estimation.
 
 ---
 
-## 🏛️ System Architecture
-
-The application follows clean software architecture principles, strictly separating presentation (Streamlit UI), domain orchestration (Facade pattern), document parsing, and LLM prompt engineering.
+## 🚀 7 Core Resume Engineering Modules
 
 ```
-                        +-------------------------+
-                        |     Streamlit UI        |
-                        |       app.py            |
-                        +------------+------------+
-                                     |
-                                     v
-                        +-------------------------+
-                        |    Resume Analyzer      |
-                        |    src/analyzer.py      |
-                        +------+-----------+------+
-                               |           |
-                 +-------------+           +-------------+
-                 |                                       |
-                 v                                       v
-      +------------------------+             +--------------------------+
-      |    Resume Parser       |             |      Gemini Client       |
-      |    src/parser.py       |             |       src/llm.py         |
-      | pdfplumber/python-docx |             +------------+-------------+
-      +------------+-----------+                          |
-                   |                                      |
-                   |                                      v
-                   |                         +--------------------------+
-                   |                         |      Prompt Builder      |
-                   |                         |     src/prompts.py       |
-                   |                         +--------------------------+
-                   |
-                   v
-      +------------------------+
-      |      Config            |
-      |     src/config.py      |
-      +------------------------+
+                        +---------------------------------------+
+                        |   Streamlit SaaS Navigation Sidebar   |
+                        |              (app.py)                 |
+                        +-------------------+-------------------+
+                                            |
+    +-------------+-------------+-----------+-----------+-------------+-------------+
+    |             |             |           |           |             |             |
+    v             v             v           v           v             v             v
++-------+     +-------+     +-------+   +-------+   +-------+     +-------+     +-------+
+| 📊 ATS|     | 📝 CV |     | ⚡ Bullet|  | 🆚 A/B|   | 🎯 Mock|    | 📧 Cold|     | 💼 Pay|
+|Analyze|     | Cover |     |Enhance|   | Test  |   |Predict|     | Email |     |  Est  |
++-------+     +-------+     +-------+   +-------+   +-------+     +-------+     +-------+
 ```
 
+### 1. 📊 AI Resume Analyzer & JD Matcher
+- **100-Point ATS Scoring Rubric**: Itemized category breakdown (Formatting, Hard Skills, Quantifiable Metrics, Experience Fit).
+- **Skill Taxonomy Extraction**: Technical Skills, Soft Skills, and Missing Industry Skills.
+- **Job Description Matcher**: Calculates targeted JD Match Score %, extracts matching keywords, and highlights missing keywords.
+
+### 2. 📝 AI Tailored Cover Letter Generator
+- Generates a customized, professional 3-paragraph cover letter tailored to the candidate's resume and target Job Description.
+- Features 1-click **Download Cover Letter (.txt)** and key highlights summary.
+
+### 3. ⚡ AI Bullet Point Enhancer & Action Verb Rewriter
+- Transforms weak, passive bullet points (*"Worked on API bugs"*) into high-impact, quantified achievements using the Google XYZ resume formula (*"Architected high-throughput FastAPI microservices processing 2.5M+ requests daily"*).
+
+### 4. 🆚 Side-by-Side Resume A/B Comparison
+- Upload 2 versions of a resume (Version A vs Version B) to compare ATS Scores, Technical Skill Counts, and Executive Summaries side-by-side to identify the winning version.
+
+### 5. 🎯 AI Resume Interview Question Predictor
+- Predicts 10 targeted Technical & STAR Behavioral interview questions based on the candidate's resume and target Job Description.
+
+### 6. 📧 Recruiter Cold Email & LinkedIn Outreach Generator
+- Crafts personalized cold emails for recruiters, direct hiring manager outreach messages, and short LinkedIn connection notes (< 280 chars).
+
+### 7. 💼 Market Salary Range & Readiness Estimator
+- Calculates base market compensation ranges (Min, Median, Max USD), identifies value-driving technical skills, and lists salary negotiation leverage points.
+
 ---
 
-## ✨ Features
-
-- **Document Ingestion**: Multi-format support for `.pdf` (using `pdfplumber`) and `.docx` (using `python-docx`).
-- **ATS Compatibility Score**: Calculates an overall rating (0–100) based on structure, keyword density, and clarity.
-- **Skill Extraction & Taxonomy**:
-  - **Technical Skills**: Hard skills, languages, frameworks, tools.
-  - **Soft Skills**: Leadership, communication, collaboration.
-  - **Missing Skills**: Key industry-standard competencies missing for the target role.
-- **Executive Summary**: 3–4 sentence profile evaluation.
-- **SWOT Analysis**: Identifies top candidate strengths and areas of weakness.
-- **Actionable Recommendations**: Numbered, step-by-step guidance for resume improvement.
-
----
-
-## 🛠️ Tech Stack
+## 🛠️ Architecture & Tech Stack
 
 - **Language**: Python 3.13
-- **Frontend / Dashboard**: Streamlit
-- **LLM / AI Model**: Google Gemini 2.5 Flash (`google-generativeai`)
+- **Frontend / Dashboard**: Streamlit (Glassmorphic Theme + Custom CSS + HTML5 Flow-Field Canvas)
+- **AI Engine**: Google Gemini 2.5 Flash (`google-generativeai`)
 - **Document Parsing**: `pdfplumber`, `python-docx`
-- **Environment Management**: `python-dotenv`
-- **Logging & Validation**: Python standard `logging`, `pydantic`
+- **Caching & Reliability**: MD5 Content Hash Caching, 3s Exponential Backoff Auto-Retry, Multi-Model Fallbacks
 
 ---
 
-## 📁 Directory Structure
+## 📁 Repository Directory Layout
 
 ```text
-AI-Resume-Analyzer/
-│── app.py                 # Streamlit dashboard interface
+Resume-Analysis/
+│── app.py                 # Multi-module Streamlit dashboard application
 │── requirements.txt       # Project dependencies
-│── README.md              # Project documentation
-│── .gitignore             # Git ignore rules
+│── README.md              # Documentation
+│── .gitignore             # Git exclusion rules
 │── .env.example           # Environment template
-│── assets/                # Visual assets & badges
-│── data/                  # Sample datasets & schemas
-│── docs/                  # Architectural notes
-│── models/                # Local data models
+│── assets/
+│   └── logo.svg           # Vector SVG brand logo
+│── components/ui/         # React / shadcn flow-field component primitives
+│   ├── flow-field-background.tsx
+│   └── demo.tsx
 │── tests/                 # Unit test suite
-│── uploads/               # Temporary file directory
 └── src/
     │── __init__.py        # Package initialization
-    │── config.py          # Configuration manager
-    │── logger.py          # Centralized logging setup
-    │── utils.py           # Text cleaning & validation helpers
+    │── config.py          # Centralized configuration dataclass
+    │── logger.py          # Formatted logging pipeline
+    │── utils.py           # Text cleaning, sample loader, & report generators
     │── parser.py          # PDF & DOCX text extraction
-    │── prompts.py         # System instructions & JSON schemas
-    │── llm.py             # Gemini API client wrapper
-    │── analyzer.py        # Facade service orchestrator
+    │── prompts.py         # System instructions & structured prompt templates
+    │── llm.py             # Gemini API client wrapper with model fallbacks
+    └── analyzer.py        # Service orchestrator facade
 ```
 
 ---
 
 ## 🚀 Quickstart Guide
 
-### 1. Clone Repository
+### 1. Clone Repository & Setup Virtual Environment
 ```bash
 git clone https://github.com/Ankushh0027/Resume-Analyser.git
 cd Resume-Analyser
-```
 
-### 2. Set Up Virtual Environment
-```bash
 python -m venv venv
 # On Windows:
 venv\Scripts\activate
@@ -121,17 +104,13 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-### 3. Install Dependencies
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables
-Copy `.env.example` to `.env` and add your Gemini API key:
-```bash
-cp .env.example .env
-```
-Inside `.env`:
+### 3. Set Up API Key (`.env`)
+Create a `.env` file in the root directory:
 ```env
 GEMINI_API_KEY=your_google_gemini_api_key_here
 GEMINI_MODEL=gemini-2.5-flash
@@ -139,18 +118,9 @@ LOG_LEVEL=INFO
 ```
 *(Get a free API key at [Google AI Studio](https://aistudio.google.com/))*
 
-### 5. Run the Application
+### 4. Run the Resume Suite Dashboard
 ```bash
 streamlit run app.py
-```
-
----
-
-## 🧪 Running Unit Tests
-
-Run the test suite using `unittest`:
-```bash
-python -m unittest discover -s tests
 ```
 
 ---

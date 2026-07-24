@@ -246,3 +246,37 @@ class GeminiClient:
         except Exception as e:
             logger.error(f"Interview prediction error: {str(e)}")
             raise LLMError(f"Interview prediction failed: {str(e)}") from e
+
+    def generate_outreach(
+        self,
+        resume_text: str,
+        target_role: str = "",
+        company_name: str = "",
+        job_description: str = "",
+    ) -> dict:
+        """Generates Recruiter Cold Email, Hiring Manager Direct Email, and LinkedIn Note."""
+        from src.prompts import build_outreach_prompt
+        prompt = build_outreach_prompt(resume_text, target_role, company_name, job_description)
+        logger.info("Generating recruiter outreach templates with Gemini API...")
+        try:
+            response = self.model.generate_content(prompt)
+            return self._parse_json_response(response.text)
+        except Exception as e:
+            logger.error(f"Outreach generation error: {str(e)}")
+            raise LLMError(f"Outreach generation failed: {str(e)}") from e
+
+    def estimate_salary(
+        self,
+        resume_text: str,
+        target_role: str = "",
+    ) -> dict:
+        """Estimates market compensation range and negotiation leverage points."""
+        from src.prompts import build_salary_estimation_prompt
+        prompt = build_salary_estimation_prompt(resume_text, target_role)
+        logger.info("Estimating salary compensation with Gemini API...")
+        try:
+            response = self.model.generate_content(prompt)
+            return self._parse_json_response(response.text)
+        except Exception as e:
+            logger.error(f"Salary estimation error: {str(e)}")
+            raise LLMError(f"Salary estimation failed: {str(e)}") from e
