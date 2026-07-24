@@ -7,13 +7,57 @@
 
 An enterprise-grade, portfolio-defining **AI Resume Analyzer & Intelligence SaaS Platform** built with **Python 3.13**, **Streamlit**, and **Google Gemini 2.5 Flash**.
 
-This repository is designed for developers, job seekers, and recruiters. Anyone can fork this project to deploy their own AI-powered career assistant or extend its features.
+This repository showcases production-ready **Generative AI Engineering, LLM System Architecture, Prompt Engineering, and Full-Stack Python Application Development**.
 
 🌐 **Live Web Application**: [https://resume-analyser.streamlit.app](https://resume-analyser.streamlit.app)
 
 ---
 
-## 📐 System Design & Architecture Overview
+## 🛠️ Comprehensive Tech Stack & AI Competencies
+
+```
+                     +-------------------------------------------------------+
+                     |           TECHNOLOGY STACK & AI ARCHITECTURE          |
+                     +-------------------------------------------------------+
+
+   [ Generative AI & LLMs ]            [ Software Architecture ]            [ Frontend & UI ]
+   • Google Gemini 2.5 Flash           • Facade Design Pattern              • Streamlit SaaS Framework
+   • Chain-of-Thought (CoT)            • Multi-Model Fallback Chain         • Dark Glassmorphic Styling
+   • Strict JSON Schema Output         • 429 Exponential Backoff            • HTML5 Canvas Flow Field API
+   • Google XYZ Formula Rewriting      • MD5 Content Hash Caching           • React & TypeScript Primitives
+
+   [ Document Processing ]             [ Quality & Security ]               [ Cloud & DevOps ]
+   • pdfplumber (PDF Extract)          • 100% In-Memory Parsing             • Git & GitHub Version Control
+   • python-docx (DOCX Extract)        • Unit Testing (unittest.mock)       • Streamlit Community Cloud
+   • Structured RegEx Cleaning         • Custom Exception Hierarchy         • Encrypted Secrets Storage
+```
+
+### 🤖 1. Artificial Intelligence & LLM Engineering
+- **LLM Providers & Models**: Google Gemini 2.5 Flash, Gemini 2.0 Flash, Gemini 1.5 Flash (`google-generativeai`).
+- **Prompt Engineering**: Chain-of-Thought (CoT) reasoning, System Instructions, strict JSON response schema enforcement, Google XYZ Resume Rewriting Formula.
+- **AI Resilience & Fault Tolerance**: Multi-model fallback execution, 404 endpoint skipping, 3s exponential backoff auto-retry for 429 rate limit spikes.
+- **In-Memory Caching**: MD5 Content Hashing (`_ANALYSIS_CACHE`) to bypass redundant LLM API calls and save tokens.
+
+### 🐍 2. Backend & System Architecture
+- **Language**: Python 3.13 (Type Annotations, Dataclasses, Custom Exception Handling).
+- **Design Patterns**: Service Orchestrator Facade (`ResumeAnalyzer`), Lazy Client Instantiation (`get_analyzer()`), Modular Package Architecture.
+- **Document Parsing**: `pdfplumber` (PDF layout & text extraction), `python-docx` (DOCX parsing).
+- **Quality Assurance**: Unit Testing (`unittest`, `unittest.mock`), Logging Pipeline (`src/logger.py`).
+
+### 🎨 3. Frontend & UI Engineering
+- **Framework**: Streamlit (Session State Management, Radio Navigation, File Uploader).
+- **Design System**: Dark Glassmorphism, Google Fonts (`Plus Jakarta Sans`), Neon Radial Glow Score Gauges.
+- **Interactive Graphics**: HTML5 Canvas JavaScript API (500 Particle Flow Field Animation with mouse repulsion).
+- **UI Components**: React & TypeScript primitives (`components/ui/flow-field-background.tsx`).
+
+### ☁️ 4. Cloud Infrastructure & DevOps
+- **Deployment**: Streamlit Community Cloud.
+- **Secrets Management**: Secure API key handling via `st.secrets` & `.env` environment variables.
+- **Version Control**: Git & GitHub Repository ([`Ankushh0027/Resume-Analyser`](https://github.com/Ankushh0027/Resume-Analyser)).
+
+---
+
+## 📐 System Architecture Diagram
 
 ```
                       +---------------------------------------+
@@ -46,14 +90,6 @@ This repository is designed for developers, job seekers, and recruiters. Anyone 
            | gemini-2.5-flash  |  429)   | gemini-2.0-flash  |  429)   | gemini-1.5-flash  |
            +-------------------+ ------> +-------------------+ ------> +-------------------+
 ```
-
-### 🧠 Core Architectural Pillars
-
-1. **Facade Pattern (`src/analyzer.py`)**: Unified entrypoint orchestrating parsing, caching, prompt generation, and LLM requests.
-2. **Resilient Multi-Model Fallback Chain (`src/llm.py`)**: Automatically detects model availability (`404 NOT_FOUND`) and skips to fallback active tiers (`gemini-2.5-flash` ➔ `gemini-2.0-flash` ➔ `gemini-1.5-flash-latest`).
-3. **Automated Exponential Backoff on 429 Limits**: Prevents rate limit quota crashes by applying a 3-second delay loop before retrying.
-4. **MD5 Content Hash Caching (`_ANALYSIS_CACHE`)**: Identical resume uploads serve cached JSON responses instantly with 0 API token consumption.
-5. **100% In-Memory Document Processing**: File buffers process in RAM without persisting user resumes to disk for privacy guarantee.
 
 ---
 
