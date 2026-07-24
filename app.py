@@ -356,10 +356,10 @@ def render_sidebar() -> tuple[str, str, str, str]:
         st.markdown("### ⚙️ Settings & Options")
 
         model_choice = st.selectbox(
-            "AI Model Engine",
-            ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"],
+            "AI Model Engine (Free Tier)",
+            ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b"],
             index=0,
-            help="Select the Gemini model tier.",
+            help="All listed models are 100% free with any Google AI Studio API key.",
         )
 
         target_role = st.text_input(
@@ -385,27 +385,30 @@ def render_sidebar() -> tuple[str, str, str, str]:
             st.success("Sample resume & JD loaded! Click 'Analyze Resume' below.")
 
         st.markdown("---")
-        st.markdown("### 🔑 System Status")
+        st.markdown("### 🔑 System Status & API Key")
 
-        if config.GEMINI_API_KEY:
-            st.success("Gemini API Key: Configured (.env)")
+        user_key = st.text_input(
+            "Enter Personal Gemini API Key",
+            type="password",
+            help="Paste your free API key from Google AI Studio to use the product",
+            key="custom_api_key_input",
+        )
+        if user_key and user_key.strip():
+            st.session_state["custom_api_key"] = user_key.strip()
+            st.caption("🟢 API Key Status: Active")
+            st.success("⚡ Active: Using your personal API key!")
         else:
-            st.warning("Gemini API Key: Not Found")
-            user_key = st.text_input(
-                "Enter Gemini API Key",
-                type="password",
-                help="Get your key from Google AI Studio",
-            )
-            if user_key:
-                st.session_state["custom_api_key"] = user_key
-                st.info("Using temporary session API key")
+            st.session_state["custom_api_key"] = ""
+            st.caption("🔴 API Key Status: Required")
+            st.warning("⚠️ Enter your Gemini API key above to use the product.")
 
-        with st.expander("💡 How to get a free API Key (30s)", expanded=False):
+        with st.expander("💡 How to get a FREE API Key (30s)", expanded=False):
             st.markdown(
                 """
                 1. Visit **[Google AI Studio](https://aistudio.google.com/)**
-                2. Click **Create API Key**
-                3. Copy your key and paste it above!
+                2. Sign in with any Google / Gmail account
+                3. Click **Get API key** -> **Create API key**
+                4. Copy and paste it above!
                 """
             )
 
@@ -421,10 +424,15 @@ def render_sidebar() -> tuple[str, str, str, str]:
 
 
 def get_analyzer(model_choice: str) -> ResumeAnalyzer:
-    """Helper function to lazily initialize ResumeAnalyzer with API key validation."""
-    custom_key = st.session_state.get("custom_api_key") or config.GEMINI_API_KEY
+    """Helper function to lazily initialize ResumeAnalyzer with user API key validation."""
+    custom_key = (
+        st.session_state.get("custom_api_key")
+        or st.session_state.get("custom_api_key_input")
+    )
+    if custom_key and isinstance(custom_key, str):
+        custom_key = custom_key.strip()
     if not custom_key:
-        st.error("🔑 **Gemini API Key Missing**: Please enter your Gemini API key in the sidebar under 'System Status' or add `GEMINI_API_KEY=your_key` to a `.env` file.")
+        st.error("🔑 **Gemini API Key Required**: Please enter your personal Gemini API key in the sidebar under 'System Status & API Key' to use the product.")
         st.stop()
     from src.llm import GeminiClient
     llm_client = GeminiClient(api_key=custom_key, model_name=model_choice)
@@ -871,7 +879,7 @@ def main() -> None:
         """
         <div style="text-align: center; margin-bottom: 12px;">
             <span style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); color: #A5B4FC; font-size: 0.82rem; font-weight: 600; padding: 6px 18px; border-radius: 30px; display: inline-block;">
-                ✨ Powered by Gemini 2.5 AI • Complete Resume Intelligence Suite
+                ✨ Powered by Google Gemini AI (Free Tier) • Complete Resume Intelligence Suite
             </span>
         </div>
         """,

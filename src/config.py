@@ -16,7 +16,7 @@ class Config:
     """Application configuration settings."""
 
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
     MAX_FILE_SIZE_MB: int = int(os.getenv("MAX_FILE_SIZE_MB", "5"))
     ALLOWED_EXTENSIONS: tuple[str, ...] = (".pdf", ".docx")

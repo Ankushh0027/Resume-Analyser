@@ -35,7 +35,7 @@ class LLMResponseParsingError(LLMError):
 class GeminiClient:
     """Interface wrapper around Google Gemini Generative API with model fallback support."""
 
-    FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
+    FALLBACK_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b"]
 
     def __init__(self, api_key: str | None = None, model_name: str | None = None) -> None:
         """
@@ -46,12 +46,12 @@ class GeminiClient:
             model_name: Optional custom model identifier (defaults to config.GEMINI_MODEL).
         """
         self.api_key = api_key or config.GEMINI_API_KEY
-        self.model_name = model_name or config.GEMINI_MODEL
+        self.model_name = model_name or "gemini-1.5-flash"
 
         if not self.api_key:
             logger.error("GeminiClient initialization failed: GEMINI_API_KEY is missing")
             raise LLMAuthenticationError(
-                "Gemini API Key missing. Please configure GEMINI_API_KEY in your .env file."
+                "Gemini API Key missing. Please enter your Gemini API key in the sidebar to use the product."
             )
 
         try:
@@ -59,22 +59,19 @@ class GeminiClient:
             self._create_model_instance(self.model_name)
             logger.info(f"Initialized GeminiClient with model: '{self.model_name}'")
         except Exception as e:
-            logger.error(f"Failed to configure Gemini API client: {str(e)}", exc_info=True)
-            raise LLMAuthenticationError(f"Gemini API configuration failure: {str(e)}") from e
+            logger.error(f"Gemini API configuration failed: {str(e)}")
+            raise LLMAuthenticationError(f"Failed to authenticate with Gemini API: {str(e)}") from e
 
     def _create_model_instance(self, model_name: str) -> None:
-        """Creates a GenerativeModel instance for the specified model name."""
+        """Helper to create GenerativeModel instance with system instruction."""
         self.model = genai.GenerativeModel(
             model_name=model_name,
             system_instruction=SYSTEM_INSTRUCTION,
-            generation_config={
-                "temperature": 0.0,
-                "response_mime_type": "application/json",
-            },
+            generation_config={"temperature": 0.2, "top_p": 0.95},
         )
         self.active_model_name = model_name
 
-    def analyze_resume(
+    def analyze(
         self,
         resume_text: str,
         target_role: str = "",
@@ -83,19 +80,6 @@ class GeminiClient:
         """
         Transmits extracted resume text and optional JD to Gemini API and returns structured JSON analysis.
         Implements automatic fallback across available Gemini models if quota limits are encountered.
-
-        Args:
-            resume_text: Sanitized text content from resume.
-            target_role: Optional target job title.
-            job_description: Optional target job description text.
-
-        Returns:
-            dict: Structured resume analysis containing scores, skills, strengths, suggestions, and JD match metrics.
-
-        Raises:
-            LLMQuotaExhaustedError: If all candidate models exhaust quota.
-            LLMError: If network or generation fails.
-            LLMResponseParsingError: If response JSON is invalid.
         """
         if not resume_text or not resume_text.strip():
             raise LLMError("Cannot analyze empty resume text.")
@@ -103,45 +87,56 @@ class GeminiClient:
         prompt = build_resume_analysis_prompt(resume_text, target_role, job_description)
         logger.info("Sending resume analysis request to Gemini API...")
 
-        # Model Fallback Loop with auto-retry on 429
+        # Fast Model Candidate Fallback Loop
         candidate_models = [self.model_name] + [m for m in self.FALLBACK_MODELS if m != self.model_name]
 
+        has_quota_error = False
+        last_general_error = None
+
         for model_candidate in candidate_models:
-            for attempt in range(2):  # Try twice per model with 3s backoff delay
-                try:
-                    if self.active_model_name != model_candidate:
-                        logger.info(f"Attempting model fallback to: '{model_candidate}'")
-                        self._create_model_instance(model_candidate)
+            try:
+                if self.active_model_name != model_candidate:
+                    logger.info(f"Fast switching model candidate to: '{model_candidate}'")
+                    self._create_model_instance(model_candidate)
 
-                    response = self.model.generate_content(prompt)
-                    raw_text = response.text
-                    logger.debug(f"Raw response from Gemini ({model_candidate}): {raw_text[:200]}...")
+                response = self.model.generate_content(prompt)
+                raw_text = response.text
+                logger.debug(f"Raw response from Gemini ({model_candidate}): {raw_text[:200]}...")
 
-                    parsed_json = self._parse_json_response(raw_text)
-                    self._validate_schema(parsed_json)
-                    logger.info(f"Successfully received and validated structured analysis from '{model_candidate}'.")
-                    return parsed_json
+                parsed_json = self._parse_json_response(raw_text)
+                self._validate_schema(parsed_json)
+                logger.info(f"Successfully received analysis from '{model_candidate}' in ultra-fast execution.")
+                return parsed_json
 
-                except (ResourceExhausted, GoogleAPICallError, Exception) as e:
-                    err_str = str(e).upper()
-                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "QUOTA" in err_str or "RATE" in err_str:
-                        if attempt == 0:
-                            logger.warning(f"Rate limit hit on '{model_candidate}'. Waiting 3 seconds before auto-retry...")
-                            import time
-                            time.sleep(3)
-                            continue
-                    elif "404" in err_str or "NOT_FOUND" in err_str:
-                        logger.warning(f"Model '{model_candidate}' not found (404). Skipping to next candidate...")
-                        break
-                    else:
-                        logger.error(f"Gemini API execution error on '{model_candidate}': {str(e)}")
-                        break
+            except Exception as e:
+                err_str = str(e).upper()
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "QUOTA" in err_str or "RATE" in err_str:
+                    has_quota_error = True
+                    logger.warning(f"Quota/Rate limit hit on '{model_candidate}'. Fast switching to next candidate...")
+                elif "404" in err_str or "NOT_FOUND" in err_str:
+                    logger.warning(f"Model candidate '{model_candidate}' not found (404). Skipping...")
+                else:
+                    last_general_error = e
+                    logger.warning(f"Candidate model '{model_candidate}' error: {str(e)}. Fast switching...")
+                continue
 
-        # If loop finishes without returning, all models & retries failed
-        raise LLMQuotaExhaustedError(
-            "Gemini API minute/daily quota limit reached. "
-            "Please wait 30 seconds and try again, or paste your custom free API key from Google AI Studio in the sidebar to bypass immediately."
-        )
+        # If all candidates failed
+        if has_quota_error:
+            raise LLMQuotaExhaustedError(
+                "API Quota Limit: Gemini API daily/minute quota limit reached. "
+                "Please paste your custom free API key from Google AI Studio in the sidebar to bypass immediately."
+            )
+
+        raise LLMError(f"Analysis failed across candidate models: {str(last_general_error or 'Model unavailable')}")
+
+    def analyze_resume(
+        self,
+        resume_text: str,
+        target_role: str = "",
+        job_description: str = "",
+    ) -> dict:
+        """Alias for analyze method for compatibility with ResumeAnalyzer."""
+        return self.analyze(resume_text=resume_text, target_role=target_role, job_description=job_description)
 
     def _parse_json_response(self, raw_text: str) -> dict:
         """Strips markdown code fences if present and parses text into a dictionary."""
