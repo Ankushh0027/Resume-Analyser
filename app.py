@@ -1461,15 +1461,17 @@ def render_admin_module() -> None:
     st.markdown("View all registered platform users, usage limit status, and analysis activity stored in the SQLite database (`data/saas_resume_analyzer.db`).")
 
     try:
-        from src.database import get_all_users_admin, reset_user_usage
+        from src.database import get_all_users_admin, reset_user_usage, get_db_type_info
         users_list = get_all_users_admin()
+        db_info = get_db_type_info()
     except Exception as e:
         st.error(f"Error reading admin database: {str(e)}")
         users_list = []
+        db_info = {"type": "Unknown", "status": str(e)}
 
     c_r1, c_r2 = st.columns([3, 1])
     with c_r1:
-        st.info(f"📊 **Database Status**: Connected to `data/saas_resume_analyzer.db` | **Total Registered Users**: `{len(users_list)}`")
+        st.info(f"📊 **Database Status**: `{db_info['type']}` ({db_info['status']}) | **Total Registered Users**: `{len(users_list)}`")
     with c_r2:
         if st.button("🔄 Refresh Database", type="primary", use_container_width=True, key="admin_refresh_btn"):
             st.toast("Database refreshed!", icon="🔄")

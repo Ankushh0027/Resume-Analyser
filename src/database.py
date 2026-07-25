@@ -120,7 +120,12 @@ def _get_connection() -> DBWrapper:
             import psycopg2.extras
             if db_url.startswith("postgres://"):
                 db_url = db_url.replace("postgres://", "postgresql://", 1)
-            conn = psycopg2.connect(db_url, cursor_factory=psycopg2.extras.RealDictCursor)
+            conn = psycopg2.connect(
+                db_url,
+                cursor_factory=psycopg2.extras.RealDictCursor,
+                sslmode="require",
+                connect_timeout=10,
+            )
             conn.autocommit = True
             logger.info("Connected to Persistent Cloud PostgreSQL Database.")
             return DBWrapper(conn, is_postgres=True)
@@ -135,6 +140,20 @@ def _get_connection() -> DBWrapper:
     except Exception as e:
         logger.warning(f"Could not set WAL mode on SQLite: {str(e)}")
     return DBWrapper(conn, is_postgres=False)
+
+
+def get_db_type_info() -> dict[str, Any]:
+    """Returns information about active database engine (PostgreSQL Cloud vs Local SQLite)."""
+    db_url = _get_cloud_db_url()
+    if db_url.startswith(("postgres://", "postgresql://")):
+        try:
+            conn = _get_connection()
+            if conn.is_postgres:
+                conn.close()
+                return {"is_cloud": True, "type": "Supabase PostgreSQL Cloud DB", "status": "Connected (SSL Mode)"}
+        except Exception as e:
+            return {"is_cloud": False, "type": "Local SQLite Fallback", "status": f"Cloud Error: {str(e)}"}
+    return {"is_cloud": False, "type": "Local SQLite Database", "status": "Active (Local File)"}
 
 
 def init_db() -> None:
