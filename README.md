@@ -1,21 +1,22 @@
 # AI Resume Analyzer & Career Intelligence Suite ⚡
 
-[![Live App](https://img.shields.io/badge/Live%20Demo-Streamlit%20Cloud-FF4B4B.svg?style=for-the-badge&logo=streamlit&logoColor=white)](https://resume-analyser-ankush.streamlit.app/)
+[![Live App](https://img.shields.io/badge/Live%20Demo-Streamlit%20Cloud-FF4B4B.svg?style=for-the-badge&logo=streamlit&logoColor=white)](https://www.resume-analyser-app-xyqm7i.streamlit.app/)
 [![Python Version](https://img.shields.io/badge/Python-3.13-3776AB.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![AI Engine](https://img.shields.io/badge/Multi--Provider-Gemini%20%7C%20OpenRouter%20%7C%20OpenAI-4285F4.svg?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
-[![Database](https://img.shields.io/badge/Database-SQLite%203-003B57.svg?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E.svg?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-An enterprise-grade, open-source platform for **AI Resume Auditing, Regional Salary Estimations, Cover Letter Generation, Bullet Rewriting, Recruiter Outreach, and Mock Interview Scenario Prediction**.
+An enterprise-grade, open-source platform for **AI Resume Auditing, Regional Salary Estimations, Cover Letter Generation, STAR Bullet Point Rewriting, Recruiter Outreach, Mock Interview Scenario Prediction, and Live Sponsor Ad Management**.
 
-Inspired by top career platforms (Rezi AI, Grammarly, and ChatGPT), this codebase is designed with a **Dark Glassmorphic UI**, **Zero-User-API-Key Management**, and a **Resilient Multi-Provider LLM Engine**.
+Inspired by top career platforms (Rezi AI, Grammarly, and ChatGPT), this platform is engineered with a **Dark Glassmorphic UI**, **Zero-User-API-Key Management**, **Supabase PostgreSQL Cloud DB**, **Forgot Password Engine**, and a **Resilient Multi-Provider LLM Architecture**.
 
 ---
 
-## 🌐 Live Application & Demo Account
+## 🌐 Live Application & Instant Access
 
-- **Live Application Link**: [https://resume-analyser-ankush.streamlit.app/](https://resume-analyser-ankush.streamlit.app/)
+- **Live App Link**: [https://www.resume-analyser-app-xyqm7i.streamlit.app/](https://www.resume-analyser-app-xyqm7i.streamlit.app/)
 - **Instant Demo Account**: Click **`⚡ Continue with Instant Demo Account`** on the login screen to evaluate sample resumes immediately without registration.
+- **Support & Inquiries**: `autoflowai06@gmail.com`
 
 ---
 
@@ -24,29 +25,37 @@ Inspired by top career platforms (Rezi AI, Grammarly, and ChatGPT), this codebas
 ### 1. 📊 ATS Compatibility Engine & Dashboard
 - **4 Core Rubrics**: Evaluates **Formatting (20 pts)**, **Technical Stack (30 pts)**, **Quantifiable Impact Metrics (30 pts)**, and **Experience Fit (20 pts)**.
 - **Deterministic Hashing**: Implements MD5 content hashing so identical resumes yield identical scores every time.
-- **Deep Skill Extraction**: Automatically identifies technical skills, soft skills, missing skills, strengths, weaknesses, and pre-application checklist items.
+- **Deep Skill & Insight Badges**: Automatically extracts technical skills, soft skills, missing skills, strengths, weaknesses, and pre-application checklist items into styled UI badges.
 
 ### 2. 💼 Region & Company-Tier Adjusted Salary Engine
 - **Multi-Country Support**: Calculates realistic compensation across **India (INR ₹ LPA)**, **United States ($ USD)**, **United Kingdom (£ GBP)**, **European Union (€ EUR)**, **Canada**, **Australia**, and **Global Remote**.
 - **Tier-Adjusted Pay Scales**: Accounts for equity, RSUs, performance bonuses, and tier adjustments across **Tier 1 FAANG / Global Tech**, **Unicorn Scaleups**, **MNC Enterprises**, **Early-Stage Startups**, and **Consulting Agencies**.
 
-### 3. 📝 Executive Cover Letter Generator
+### 3. 🔒 Authentication & Account Recovery Portal
+- **3-Tab Authentication Hub**: Supports **🔑 Log In**, **✨ Create Account**, and **🔒 Forgot Password**.
+- **Password Reset Engine**: Allows registered users to reset their account password securely with SHA-256 encryption.
+- **Session Persistence**: Maintains user state cleanly across app navigations.
+
+### 4. 📝 Executive Cover Letter Generator
 - Generates 3-paragraph executive cover letters matching the candidate's background against target job descriptions with 1-click `.txt` download.
 
-### 4. ⚡ STAR Bullet Point Enhancer
+### 5. ⚡ STAR Bullet Point Enhancer
 - Transforms weak resume bullet points into high-impact, STAR-formatted statements enriched with strong action verbs and quantifiable metrics.
 
-### 5. 🆚 Resume A/B Version Comparator
+### 6. 🆚 Resume A/B Version Comparator
 - Evaluates two resume versions side-by-side to display ATS score deltas, added technical skills, and improvements.
 
-### 6. 🎯 Mock Interview Question Predictor
+### 7. 🎯 Mock Interview Scenario Predictor
 - Predicts role-specific technical deep-dive questions and STAR behavioral interview scenarios.
 
-### 7. 📧 Recruiter & Hiring Manager Outreach Generator
+### 8. 📧 Recruiter & Hiring Manager Outreach Generator
 - Generates high-converting cold recruiter emails, hiring manager emails, and 280-character LinkedIn connection notes.
 
-### 8. 👑 Built-In SQLite Admin Console
-- Accessible to authorized admin emails (`ankush@gmail.com`, `admin@resumeai.com`). Features a live user table, credit counts, and 1-click usage reset tools.
+### 9. 📢 Live Sponsor Ad Management Engine
+- Allows platform admins to toggle live banner advertisements, customize ad headlines, description text, badge tags, and destination links directly via the Admin Panel.
+
+### 10. 👑 Admin Console & Cloud Analytics
+- Accessible to authorized admins (`autoflowai06@gmail.com`). Features a live user database, system audit statistics, real-time database connection status (`Supabase PostgreSQL SSL`), and usage reset tools.
 
 ---
 
@@ -58,14 +67,14 @@ Inspired by top career platforms (Rezi AI, Grammarly, and ChatGPT), this codebas
 └─────────────────────────────────────────────────────────────────────────────────┘
 
    ┌───────────────────────────┐         ┌───────────────────────────┐
-   │    User Browser / UI      │         │   Authentication Wall     │
-   │  (Streamlit + Glassmorphism) ◄──────►│    (src/auth.py + SHA-256)│
+   │    User Browser / UI      │         │   Authentication Hub      │
+   │  (Streamlit + Glassmorphic) ◄──────►│   (Auth, Signup, Password)│
    └─────────────┬─────────────┘         └─────────────┬─────────────┘
                  │                                     │
                  ▼                                     ▼
    ┌───────────────────────────┐         ┌───────────────────────────┐
-   │    Document Parser        │         │    SQLite Database        │
-   │  (pdfplumber + docx)      │         │(data/saas_resume_analyzer)│
+   │    Document Parser        │         │ Supabase PostgreSQL DB    │
+   │  (pdfplumber + docx)      │         │(Pooler SSL / SQLite Fallback)│
    └─────────────┬─────────────┘         └─────────────┬─────────────┘
                  │                                     │
                  ▼                                     ▼
@@ -74,10 +83,10 @@ Inspired by top career platforms (Rezi AI, Grammarly, and ChatGPT), this codebas
    │              (src/services/ai_service.py)                       │
    │   • MD5 Content Hash Determinism    • Retry Engine (Backoff)    │
    │   • Universal Skill Extractor       • Global Error Masking      │
-   └───────────────────────────────┬─────────────────────────────────┘
-                                   │
-         ┌─────────────────────────┼─────────────────────────┐
-         ▼                         ▼                         ▼
+   └─────────────┬───────────────────────────────────────────────────┘
+                 │
+         ┌───────┼─────────────────────────┐
+         ▼       ▼                         ▼
  ┌───────────────┐         ┌───────────────┐         ┌───────────────┐
  │ Gemini 2.5    │         │ OpenRouter    │         │ OpenAI GPT    │
  │ (Primary API) │ ──────► │ (Fallback #1) │ ──────► │ (Fallback #2) │
@@ -94,12 +103,13 @@ Inspired by top career platforms (Rezi AI, Grammarly, and ChatGPT), this codebas
 - **Automatic Fallback**: If rate limits occur, requests fall back seamlessly to **OpenRouter Free Models** and **OpenAI GPT-4o-mini**.
 - **Exponential Backoff**: Executes automatic retries with exponential delays (2s ➔ 5s ➔ 10s).
 
-### 3. Database & Auth Layer (`src/database.py` & `src/auth.py`)
-- **SQLite Engine**: Physical database stored at `data/saas_resume_analyzer.db`.
+### 3. Persistent Database & Security Layer (`src/database.py` & `src/auth.py`)
+- **Cloud Engine**: Supabase PostgreSQL DB via Transaction Pooler (`sslmode=require`).
+- **Local Fallback**: SQLite fallback (`data/saas_resume_analyzer.db`).
 - **Tables**:
-  - `users`: Stores User ID, Name, Email, SHA-256 Password Hash, Creation Timestamp.
-  - `usage_limits`: Tracks monthly analysis count (3 free analyses per account).
-  - `analysis_history`: Stores complete JSON payloads, extracted text, and ATS scores for past audits.
+  - `users`: User ID, Name, Email, SHA-256 Password Hash, Registration Timestamp.
+  - `usage_limits`: Monthly analysis count, plan tier, and extra credits per account.
+  - `analysis_history`: Stores full JSON audit payloads, extracted text, and ATS scores for past evaluations.
 
 ---
 
@@ -109,17 +119,21 @@ Inspired by top career platforms (Rezi AI, Grammarly, and ChatGPT), this codebas
 Resume-Analyser/
 ├── app.py                      # Main Streamlit web application & top tab layout
 ├── requirements.txt            # Python package dependencies
-├── README.md                   # Project documentation & fork guide
+├── README.md                   # Project documentation
 ├── .env.example                # Template for environment variables
 ├── data/
-│   └── saas_resume_analyzer.db # Persistent SQLite database
+│   └── saas_resume_analyzer.db # Local SQLite database fallback
+├── scripts/
+│   └── test_supabase_conn.py   # Supabase connection verification utility
 ├── src/
-│   ├── analyzer.py             # Core facade for analysis, salary, and outreach
-│   ├── auth.py                 # User login, registration wall & session auth
+│   ├── ads.py                  # Sponsor Ad Management & Banner Engine
+│   ├── analyzer.py             # Core facade for ATS scoring, salary, and outreach
+│   ├── auth.py                 # User login, signup, password reset & auth header
 │   ├── config.py               # Managed API key and environment config
-│   ├── database.py             # SQLite helper functions, schema & queries
+│   ├── database.py             # Supabase PostgreSQL / SQLite database engine
 │   ├── llm.py                  # LLM service orchestration & provider fallbacks
 │   ├── parser.py               # PDF and DOCX document extraction engine
+│   ├── payments.py             # Payment order utilities
 │   ├── prompts.py              # System prompts for ATS scoring & salary estimation
 │   ├── providers/
 │   │   ├── base.py             # Abstract base provider interface
@@ -129,34 +143,35 @@ Resume-Analyser/
 │   │   └── openrouter_provider.py # OpenRouter multi-model implementation
 │   └── services/
 │       ├── ai_service.py       # Result sanitization & skill list resolver
-│       └── usage_service.py    # Free tier credit limit enforcement
+│       └── usage_service.py    # Usage limit management
 └── tests/
     ├── test_analyzer.py        # Unit tests for document analyzer
-    └── test_saas_features.py   # Integration tests for auth and limits
+    └── test_saas_features.py   # Integration tests for auth and database
 ```
 
 ---
 
-## 🍴 How to Fork & Run Locally
+## 🍴 How to Run Locally & Setup Supabase
 
-If you want to fork this project and customize it for your own team or portfolio:
-
-### Step 1: Fork & Clone Repository
-Click the **Fork** button at the top right of this GitHub page, then clone your fork:
+### Step 1: Clone Repository
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/Resume-Analyser.git
+git clone https://github.com/Ankushh0027/Resume-Analyser.git
 cd Resume-Analyser
 ```
 
-### Step 2: Configure Environment Variables
-Create a `.env` file in the root folder:
+### Step 2: Configure `.env` File
+Create a `.env` file in the project root:
+
 ```env
-# Server-Side Managed AI Credentials
+# Supabase PostgreSQL Connection String (Transaction Pooler)
+DATABASE_URL=postgresql://postgres.emkarnsfdneiqgmbnvit:resume9878635@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+
+# Managed AI Credentials
 GEMINI_API_KEY=your_google_gemini_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
 OPENAI_API_KEY=your_openai_api_key
 
-# Execution Configuration
+# Execution Controls
 MAX_RETRIES=3
 RATE_LIMIT_RPM=15
 ```
@@ -166,7 +181,7 @@ RATE_LIMIT_RPM=15
 pip install -r requirements.txt
 ```
 
-### Step 4: Run Application
+### Step 4: Launch Application
 ```bash
 streamlit run app.py
 ```
@@ -188,4 +203,3 @@ Contributions, issues, and feature requests are welcome!
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for details.
-
