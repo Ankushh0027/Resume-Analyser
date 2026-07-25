@@ -4,6 +4,7 @@ Provides realistic structured JSON evaluation fallbacks when no external server-
 """
 
 import json
+import hashlib
 from src.providers.base import BaseLLMProvider
 
 
@@ -94,13 +95,94 @@ class MockLLMProvider(BaseLLMProvider):
                     "top_value_skills": ["Python", "FastAPI", "Cloud Architecture"],
                     "negotiation_leverage_points": ["Strong microservices experience", "Proven latency reduction metrics"],
                 }
-        else:  # Standard Resume Analysis
-            p_hash = int(hashlib.md5(prompt.encode('utf-8')).hexdigest()[:8], 16)
-            sf = 16 + (p_hash % 5)         # 16 - 20
-            ts = 23 + ((p_hash >> 2) % 7)   # 23 - 29
-            qr = 21 + ((p_hash >> 4) % 8)   # 21 - 28
-            ef = 15 + ((p_hash >> 6) % 5)   # 15 - 19
+        else:  # Standard Resume Analysis - Intelligent Real-Text Heuristic Parser
+            import re
+
+            resume_text = prompt
+            if "RESUME TEXT:" in prompt:
+                resume_text = prompt.split("RESUME TEXT:", 1)[1]
+
+            cleaned_lower = resume_text.lower()
+
+            KNOWN_TECH_SKILLS = [
+                "Python", "Java", "C++", "C#", "JavaScript", "TypeScript", "React", "Angular", "Vue", "Node.js",
+                "Express", "Django", "Flask", "FastAPI", "Spring Boot", "SQL", "PostgreSQL", "MySQL", "MongoDB",
+                "Redis", "Docker", "Kubernetes", "AWS", "Azure", "GCP", "Git", "Linux", "REST", "GraphQL", "gRPC",
+                "Microservices", "CI/CD", "HTML", "CSS", "Tailwind", "Bootstrap", "PyTorch", "TensorFlow", "Pandas",
+                "NumPy", "Scikit-Learn", "OpenCV", "Kafka", "Elasticsearch", "Jenkins", "Terraform", "Ansible"
+            ]
+            KNOWN_SOFT_SKILLS = [
+                "Technical Leadership", "Agile Methodologies", "Cross-Functional Collaboration", "Problem Solving",
+                "System Design", "Code Review", "Project Management", "Team Mentorship", "Stakeholder Communication"
+            ]
+
+            def _check_skill(s_name: str) -> bool:
+                s_low = s_name.lower()
+                if any(char in s_low for char in ["+", "#", "/", "."]):
+                    return s_low in cleaned_lower
+                return bool(re.search(r'\b' + re.escape(s_low) + r'\b', cleaned_lower))
+
+            found_tech = [s for s in KNOWN_TECH_SKILLS if _check_skill(s)]
+            found_soft = [s for s in KNOWN_SOFT_SKILLS if _check_skill(s)]
+
+            metrics_found = re.findall(r'(\d+%\s*|\$\d+[\d,]*|\b\d+\+\s*(?:users|requests|clients|projects|million|k|m|%)|\b\d{2,}\b)', cleaned_lower)
+            metric_count = len(metrics_found)
+
+            has_email = "@" in cleaned_lower
+            has_phone = bool(re.search(r'\b\d{10}\b|\+\d{1,3}', cleaned_lower))
+            has_linkedin = "linkedin" in cleaned_lower
+
+            sf = 12
+            if has_email: sf += 3
+            if has_phone: sf += 2
+            if has_linkedin: sf += 3
+            sf = min(20, sf)
+
+            ts = min(30, max(8, len(found_tech) * 3))
+
+            if metric_count >= 5:
+                qr = min(30, 18 + metric_count * 2)
+            elif metric_count >= 2:
+                qr = 14 + metric_count * 2
+            else:
+                qr = max(5, metric_count * 4)
+
+            ef = min(20, 10 + min(10, len(resume_text) // 250))
             total_ats = sf + ts + qr + ef
+
+            all_possible_missing = ["Docker", "Kubernetes", "AWS", "CI/CD", "Redis", "TypeScript", "System Design"]
+            missing_skills = [m for m in all_possible_missing if m not in found_tech][:3]
+            if not missing_skills:
+                missing_skills = ["Advanced Cloud Architecture", "gRPC Microservices"]
+
+            strengths = []
+            if found_tech:
+                strengths.append(f"Strong technical stack detected: {', '.join(found_tech[:4])}")
+            if metric_count >= 2:
+                strengths.append(f"Includes quantifiable achievements and metrics ({metric_count} metric points found)")
+            if sf >= 16:
+                strengths.append("Clean document structure with complete contact information")
+            if not strengths:
+                strengths = ["Clear professional experience section", "Readable layout structure"]
+
+            weaknesses = []
+            if metric_count < 3:
+                weaknesses.append("Lacks sufficient quantifiable impact metrics (percentages %, dollar values $, or throughput numbers)")
+            if ts < 18:
+                weaknesses.append("Technical skill inventory could be expanded to match industry roles")
+            if not has_linkedin:
+                weaknesses.append("Missing explicit LinkedIn profile link in contact section")
+            if not weaknesses:
+                weaknesses = ["Could include additional industry certifications", "Emphasize leadership experience"]
+
+            improvement_suggestions = [
+                "Quantify bullet points with measurable impact (e.g., 'Improved latency by 35%' or 'Handled 50k+ daily users').",
+                "Highlight core technical frameworks near the top of your experience bullets.",
+                "Ensure standard contact details (Email, Phone, LinkedIn, GitHub) are clearly visible at the top."
+            ]
+
+            tech_summary_str = f" possessing technical experience in {', '.join(found_tech[:3])}" if found_tech else ""
+            summary = f"Evaluated candidate resume{tech_summary_str}. Demonstrates a structured professional background with an overall ATS compatibility score of {total_ats}/100."
 
             res = {
                 "score_breakdown": {
@@ -110,21 +192,17 @@ class MockLLMProvider(BaseLLMProvider):
                     "experience_fit": ef,
                 },
                 "ats_score": total_ats,
-                "summary": "Accomplished Senior Software Engineer with strong experience in full stack application development, microservices, and AI integrations. Demonstrates track record of building high-performance systems and leading agile teams.",
-                "technical_skills": ["Python", "FastAPI", "TypeScript", "React", "Docker", "PostgreSQL", "AWS"],
-                "soft_skills": ["Technical Leadership", "Agile Collaboration", "System Design Thinking"],
-                "missing_skills": ["Kubernetes", "GraphQL / gRPC"],
-                "strengths": ["Quantifiable metric-driven bullet points", "Strong backend and database technical stack", "Clear structural formatting and contact layout"],
-                "weaknesses": ["Could add Kubernetes orchestration experience", "Include additional industry certifications"],
-                "improvement_suggestions": [
-                    "Add quantifiable metrics to recent role accomplishments.",
-                    "Highlight Kubernetes or container orchestration projects.",
-                    "Include relevant cloud certifications (e.g. AWS Certified Developer).",
-                ],
-                "jd_match_score": min(95, total_ats + 1),
-                "matching_keywords": ["Python", "FastAPI", "React", "PostgreSQL"],
-                "missing_jd_keywords": ["Kubernetes", "Redis"],
-                "jd_tailored_suggestions": ["Emphasize containerization and caching experience in work history."],
+                "summary": summary,
+                "technical_skills": found_tech if found_tech else ["Software Development", "Database Management"],
+                "soft_skills": found_soft if found_soft else ["Problem Solving", "Team Collaboration"],
+                "missing_skills": missing_skills,
+                "strengths": strengths,
+                "weaknesses": weaknesses,
+                "improvement_suggestions": improvement_suggestions,
+                "jd_match_score": min(95, total_ats) if "JOB DESCRIPTION:" in prompt else 0,
+                "matching_keywords": found_tech[:3] if found_tech else ["Software"],
+                "missing_jd_keywords": missing_skills[:2],
+                "jd_tailored_suggestions": ["Align resume key terms directly with target job requirements."],
             }
 
         return json.dumps(res)

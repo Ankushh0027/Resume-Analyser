@@ -308,6 +308,67 @@ st.markdown(
     .score-med { color: #FBBF24 !important; text-shadow: 0 0 35px rgba(251, 191, 36, 0.6) !important; }
     .score-low { color: #F87171 !important; text-shadow: 0 0 35px rgba(248, 113, 113, 0.6) !important; }
 
+    /* Skill Badges & Pill Tags */
+    .badge {
+        display: inline-block !important;
+        padding: 6px 14px !important;
+        margin: 4px 6px 4px 0 !important;
+        border-radius: 12px !important;
+        font-size: 0.88rem !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.2px !important;
+        transition: all 0.2s ease !important;
+    }
+    .badge-tech {
+        background: rgba(99, 102, 241, 0.25) !important;
+        border: 1px solid rgba(129, 140, 248, 0.45) !important;
+        color: #E0E7FF !important;
+    }
+    .badge-soft {
+        background: rgba(16, 185, 129, 0.25) !important;
+        border: 1px solid rgba(16, 185, 129, 0.45) !important;
+        color: #A7F3D0 !important;
+    }
+    .badge-missing {
+        background: rgba(239, 68, 68, 0.25) !important;
+        border: 1px solid rgba(239, 68, 68, 0.45) !important;
+        color: #FCA5A5 !important;
+    }
+
+    /* Insight Cards (Strengths, Weaknesses, Action Plan) */
+    .insight-card {
+        background: rgba(15, 23, 42, 0.85) !important;
+        border-radius: 12px !important;
+        padding: 14px 18px !important;
+        margin-bottom: 10px !important;
+        font-size: 0.95rem !important;
+        line-height: 1.5 !important;
+        color: #F8FAFC !important;
+        backdrop-filter: blur(10px) !important;
+        transition: all 0.2s ease !important;
+    }
+    .strength-item {
+        border-left: 4px solid #10B981 !important;
+        border-top: 1px solid rgba(16, 185, 129, 0.25) !important;
+        border-right: 1px solid rgba(16, 185, 129, 0.25) !important;
+        border-bottom: 1px solid rgba(16, 185, 129, 0.25) !important;
+        background: rgba(16, 185, 129, 0.1) !important;
+    }
+    .weakness-item {
+        border-left: 4px solid #F59E0B !important;
+        border-top: 1px solid rgba(245, 158, 11, 0.25) !important;
+        border-right: 1px solid rgba(245, 158, 11, 0.25) !important;
+        border-bottom: 1px solid rgba(245, 158, 11, 0.25) !important;
+        background: rgba(245, 158, 11, 0.1) !important;
+    }
+    .suggestion-item {
+        border-left: 4px solid #6366F1 !important;
+        border-top: 1px solid rgba(99, 102, 241, 0.25) !important;
+        border-right: 1px solid rgba(99, 102, 241, 0.25) !important;
+        border-bottom: 1px solid rgba(99, 102, 241, 0.25) !important;
+        background: rgba(99, 102, 241, 0.1) !important;
+    }
+
     /* Custom Badges */
     .badge {
         display: inline-block !important;
@@ -386,7 +447,10 @@ def render_sidebar() -> tuple[str, str, str, str]:
         if os.path.exists("assets/logo.svg"):
             st.image("assets/logo.svg", width=56)
 
-        admin_emails = ["admin@resumeai.com", "demo@resumeai.com", "ankush@gmail.com", "admin@gmail.com"]
+        env_admin_str = os.getenv("ADMIN_EMAILS", "")
+        env_admins = [e.strip().lower() for e in env_admin_str.split(",") if e.strip()]
+        default_admins = ["autoflowai06@gmail.com", "admin@resumeai.com", "demo@resumeai.com", "ankush@gmail.com", "admin@gmail.com"]
+        admin_emails = set(default_admins + env_admins)
         is_admin = bool(user and user.get("email", "").strip().lower() in admin_emails)
 
         modules = [
@@ -413,7 +477,7 @@ def render_sidebar() -> tuple[str, str, str, str]:
 
         model_choice = st.selectbox(
             "AI Engine (Managed Server-Side)",
-            ["gemini-2.5-flash", "gemini-1.5-flash", "google/gemini-2.0-flash-lite-001:free", "meta-llama/llama-3.3-70b-instruct:free", "gpt-4o-mini"],
+            ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp", "google/gemini-2.0-flash-lite-001:free", "meta-llama/llama-3.3-70b-instruct:free", "gpt-4o-mini"],
             index=0,
             help="All AI processing runs server-side with zero user key management required.",
         )
@@ -501,7 +565,7 @@ def get_analyzer() -> ResumeAnalyzer:
 # Module Renderers
 # -----------------------------------------------------------------------------
 
-def render_resume_analyzer_dashboard(result: dict) -> None:
+def render_resume_analyzer_dashboard(result: dict, key_prefix: str = "main") -> None:
     breakdown = result.get("score_breakdown", {})
     score = result.get("ats_score", 0)
     if not score and breakdown:
@@ -512,6 +576,7 @@ def render_resume_analyzer_dashboard(result: dict) -> None:
     meta = result.get("meta", {})
     has_jd = meta.get("has_jd", False) or result.get("jd_match_score", 0) > 0
     color_class = get_score_color_class(score)
+    pfx = f"{key_prefix}_{meta.get('request_id', 'req')}"
 
     st.markdown("## 📊 Analysis Dashboard")
 
@@ -576,27 +641,27 @@ def render_resume_analyzer_dashboard(result: dict) -> None:
         with col_tech:
             st.markdown("#### 🛠️ Technical Skills")
             tech_skills = result.get("technical_skills", [])
-            if tech_skills:
+            if tech_skills and isinstance(tech_skills, list):
                 badges = "".join([f'<span class="badge badge-tech">{s}</span>' for s in tech_skills])
-                st.markdown(f"<div>{badges}</div>", unsafe_allow_html=True)
+                st.markdown(f'<div style="margin-bottom:12px;">{badges}</div>', unsafe_allow_html=True)
             else:
                 st.caption("No technical skills detected.")
 
         with col_soft:
             st.markdown("#### 💡 Soft Skills & Leadership")
             soft_skills = result.get("soft_skills", [])
-            if soft_skills:
+            if soft_skills and isinstance(soft_skills, list):
                 badges = "".join([f'<span class="badge badge-soft">{s}</span>' for s in soft_skills])
-                st.markdown(f"<div>{badges}</div>", unsafe_allow_html=True)
+                st.markdown(f'<div style="margin-bottom:12px;">{badges}</div>', unsafe_allow_html=True)
             else:
                 st.caption("No soft skills detected.")
 
         with col_miss:
             st.markdown("#### ⚠️ Missing / Recommended Skills")
             missing_skills = result.get("missing_skills", [])
-            if missing_skills:
+            if missing_skills and isinstance(missing_skills, list):
                 badges = "".join([f'<span class="badge badge-missing">{s}</span>' for s in missing_skills])
-                st.markdown(f"<div>{badges}</div>", unsafe_allow_html=True)
+                st.markdown(f'<div style="margin-bottom:12px;">{badges}</div>', unsafe_allow_html=True)
             else:
                 st.success("No critical skill gaps identified!")
 
@@ -605,27 +670,36 @@ def render_resume_analyzer_dashboard(result: dict) -> None:
         with col_str:
             st.markdown("#### 🟢 Key Strengths")
             strengths = result.get("strengths", [])
-            for item in strengths:
-                st.markdown(f'<div class="insight-card strength-item">✔️ {item}</div>', unsafe_allow_html=True)
+            if strengths and isinstance(strengths, list):
+                for item in strengths:
+                    st.markdown(f'<div class="insight-card strength-item">✔️ <strong>Strength</strong>: {item}</div>', unsafe_allow_html=True)
+            else:
+                st.info("Legible formatting & standard contact structure.")
 
         with col_weak:
             st.markdown("#### 🟠 Areas for Improvement")
             weaknesses = result.get("weaknesses", [])
-            for item in weaknesses:
-                st.markdown(f'<div class="insight-card weakness-item">⚠️ {item}</div>', unsafe_allow_html=True)
+            if weaknesses and isinstance(weaknesses, list):
+                for item in weaknesses:
+                    st.markdown(f'<div class="insight-card weakness-item">⚠️ <strong>Gap Area</strong>: {item}</div>', unsafe_allow_html=True)
+            else:
+                st.success("No major structural weaknesses detected.")
 
     with tab_action:
         st.markdown("#### 📈 Actionable Improvement Recommendations")
         suggestions = result.get("improvement_suggestions", [])
-        for idx, sug in enumerate(suggestions, start=1):
-            st.markdown(f'<div class="insight-card suggestion-item"><strong>{idx}.</strong> {sug}</div>', unsafe_allow_html=True)
+        if suggestions and isinstance(suggestions, list):
+            for idx, sug in enumerate(suggestions, start=1):
+                st.markdown(f'<div class="insight-card suggestion-item"><strong>{idx}.</strong> {sug}</div>', unsafe_allow_html=True)
+        else:
+            st.info("Add quantifiable metrics (% increase, throughput) to your recent position bullet points.")
 
     with tab_check:
         st.markdown("#### 📋 Pre-Application Checklist")
-        st.checkbox("✔️ Formatting: Clean 1-page layout without tables or graphics", value=score >= 70)
-        st.checkbox("✔️ Contact Details: Email, LinkedIn, GitHub present", value=True)
-        st.checkbox("✔️ Quantified Metrics: Included metrics (% increase, throughput) in experience", value=breakdown.get("quantifiable_results", 0) >= 15)
-        st.checkbox("✔️ Action Verbs: Engineered, Architected, Spearheaded used at bullet starts", value=True)
+        st.checkbox("✔️ Formatting: Clean 1-page layout without tables or graphics", value=score >= 70, key=f"{pfx}_chk_fmt")
+        st.checkbox("✔️ Contact Details: Email, LinkedIn, GitHub present", value=True, key=f"{pfx}_chk_cnt")
+        st.checkbox("✔️ Quantified Metrics: Included metrics (% increase, throughput) in experience", value=breakdown.get("quantifiable_results", 0) >= 15, key=f"{pfx}_chk_met")
+        st.checkbox("✔️ Action Verbs: Engineered, Architected, Spearheaded used at bullet starts", value=True, key=f"{pfx}_chk_vrb")
 
     if has_jd:
         tab_jd = tabs[4]
@@ -657,6 +731,7 @@ def render_resume_analyzer_dashboard(result: dict) -> None:
             file_name=f"{filename_stem}_analysis_report.txt",
             mime="text/plain",
             use_container_width=True,
+            key=f"{pfx}_dl_txt",
         )
     with col_dl2:
         st.download_button(
@@ -665,6 +740,7 @@ def render_resume_analyzer_dashboard(result: dict) -> None:
             file_name=f"{filename_stem}_analysis_report.json",
             mime="application/json",
             use_container_width=True,
+            key=f"{pfx}_dl_json",
         )
 
 
@@ -707,7 +783,7 @@ def render_history_module() -> None:
 
             show_full = st.checkbox(f"🔍 Show Full Interactive Evaluation Dashboard for Audit #{idx}", key=f"hist_cb_{item['id']}", value=(idx == 1))
             if show_full:
-                render_resume_analyzer_dashboard(res)
+                render_resume_analyzer_dashboard(res, key_prefix=f"hist_{item['id']}")
 
 
 def format_salary_val(val: Any) -> str:
@@ -1217,35 +1293,23 @@ def render_salary_estimator_module(target_role: str) -> None:
 
 def render_admin_module() -> None:
     """Renders Admin Console displaying registered users, free usage limits, and DB history."""
-    col_hdr, col_ref = st.columns([3, 1])
-    with col_hdr:
-        st.markdown("## 👑 Admin Console & User Analytics")
-        st.markdown("View all registered SaaS platform users, usage limit status, and analysis activity stored in the SQLite database (`data/saas_resume_analyzer.db`).")
-    with col_ref:
+    st.markdown("## 👑 Admin Console & User Analytics")
+    st.markdown("View all registered platform users, usage limit status, and analysis activity stored in the SQLite database (`data/saas_resume_analyzer.db`).")
+
+    try:
+        from src.database import get_all_users_admin, reset_user_usage
+        users_list = get_all_users_admin()
+    except Exception as e:
+        st.error(f"Error reading admin database: {str(e)}")
+        users_list = []
+
+    c_r1, c_r2 = st.columns([3, 1])
+    with c_r1:
+        st.info(f"📊 **Database Status**: Connected to `data/saas_resume_analyzer.db` | **Total Registered Users**: `{len(users_list)}`")
+    with c_r2:
         if st.button("🔄 Refresh Database", type="primary", use_container_width=True, key="admin_refresh_btn"):
-            st.toast("Database refreshed! Latest user entries reloaded.", icon="🔄")
+            st.toast("Database refreshed!", icon="🔄")
             st.rerun()
-
-    from src.database import get_all_users_admin, reset_user_usage
-    users_list = get_all_users_admin()
-
-    st.markdown(
-        f"""
-        <div class="glass-card" style="padding: 20px; margin-bottom: 24px; border-left: 4px solid #6366F1;">
-            <div style="display: flex; gap: 32px; flex-wrap: wrap;">
-                <div>
-                    <span style="font-size: 0.8rem; color: #94A3B8; font-weight: 700; text-transform: uppercase;">Total Registered SaaS Users</span>
-                    <h3 style="margin: 4px 0; color: #F8FAFC; font-size: 1.8rem;">{len(users_list)} Users</h3>
-                </div>
-                <div>
-                    <span style="font-size: 0.8rem; color: #94A3B8; font-weight: 700; text-transform: uppercase;">Database Location</span>
-                    <h3 style="margin: 4px 0; color: #C7D2FE; font-size: 1.1rem;">data/saas_resume_analyzer.db</h3>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
     if users_list:
         import pandas as pd
@@ -1368,7 +1432,11 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # TOP HORIZONTAL FEATURE SUITE TABS (PROMINENTLY DISPLAYED ON MAIN WINDOW)
     # -------------------------------------------------------------------------
-    admin_emails = ["admin@resumeai.com", "demo@resumeai.com", "ankush@gmail.com", "admin@gmail.com"]
+    env_admin_str = os.getenv("ADMIN_EMAILS", "")
+    env_admins = [e.strip().lower() for e in env_admin_str.split(",") if e.strip()]
+    default_admins = ["autoflowai06@gmail.com", "admin@resumeai.com", "demo@resumeai.com", "ankush@gmail.com", "admin@gmail.com"]
+    admin_emails = set(default_admins + env_admins)
+
     is_admin = bool(user and user.get("email", "").strip().lower() in admin_emails)
 
     tab_labels = [
@@ -1388,11 +1456,34 @@ def main() -> None:
 
     # 1. Resume Analyzer Tab
     with main_tabs[0]:
-        uploaded_file = st.file_uploader(
-            "Upload your Resume (PDF or DOCX)",
-            type=["pdf", "docx"],
-            help="Supported formats: .pdf, .docx. Maximum file size: 5MB",
-        )
+        st.markdown("### 📄 Resume Upload & Target Job Configuration")
+        c_up, c_tgt = st.columns([1, 1])
+
+        with c_up:
+            uploaded_file = st.file_uploader(
+                "Upload your Resume (PDF or DOCX)",
+                type=["pdf", "docx"],
+                help="Supported formats: .pdf, .docx. Maximum file size: 5MB",
+                key="main_resume_uploader",
+            )
+
+        with c_tgt:
+            main_target_role = st.text_input(
+                "Target Job Title (Optional)",
+                value=target_role,
+                placeholder="e.g., Senior Full Stack Engineer / Product Manager",
+                key="main_target_role_input",
+            )
+            main_job_desc = st.text_area(
+                "Target Job Description (Optional)",
+                value=job_description,
+                height=110,
+                placeholder="Paste target job posting here to evaluate JD match...",
+                key="main_job_desc_input",
+            )
+
+        effective_role = main_target_role.strip() if main_target_role and main_target_role.strip() else target_role
+        effective_jd = main_job_desc.strip() if main_job_desc and main_job_desc.strip() else job_description
 
         demo_sample_text = st.session_state.get("demo_sample_text")
         demo_sample_name = st.session_state.get("demo_sample_name")
@@ -1405,8 +1496,8 @@ def main() -> None:
         elif demo_sample_text:
             file_source = demo_sample_text
             filename = demo_sample_name
-            if not job_description:
-                job_description = demo_sample_jd
+            if not effective_jd:
+                effective_jd = demo_sample_jd
             st.info(f"Loaded Sample Resume: `{filename}`")
         else:
             file_source = None
@@ -1421,8 +1512,8 @@ def main() -> None:
                         result = analyzer.analyze(
                             file_source,
                             filename,
-                            target_role,
-                            job_description,
+                            effective_role,
+                            effective_jd,
                             user=user,
                             preferred_model=model_choice,
                         )

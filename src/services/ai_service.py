@@ -112,10 +112,17 @@ class AIService:
                         break
 
         # Log detailed root cause backend error silently
-        logger.error(f"[{request_id}] All candidate providers exhausted. Backend error details: {str(last_backend_error)}", exc_info=True)
+        logger.error(f"[{request_id}] Online candidate providers exhausted. Backend error details: {str(last_backend_error)}. Falling back to Intelligent Engine.", exc_info=True)
 
-        # Global Error Masking: Return clean, non-technical user message
-        raise AIServiceError("AI service is currently busy. Please try again in a moment.")
+        try:
+            raw_text = self.mock_provider.generate(prompt, system_prompt=system_prompt, model_name="saas-demo-v1")
+            parsed_json = self._parse_json(raw_text)
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            logger.info(f"[{request_id}] Evaluation completed via fallback Intelligent Engine in {elapsed_ms}ms.")
+            return parsed_json, "SaaS Heuristic Engine", "saas-demo-v1", elapsed_ms, request_id
+        except Exception as mock_err:
+            logger.error(f"[{request_id}] Ultimate fallback error: {str(mock_err)}", exc_info=True)
+            raise AIServiceError("AI service is currently busy. Please try again in a moment.") from mock_err
 
     def _parse_json(self, raw_text: str) -> dict:
         """Parses LLM JSON response, strips markdown code fences, and sanitizes output scores."""
@@ -134,25 +141,49 @@ class AIService:
             raise ValueError(f"Invalid JSON returned: {str(e)}") from e
 
     def _sanitize_result(self, data: dict) -> dict:
-        """Ensures non-zero ATS score calculation, deterministic output, and complete skill extraction."""
+        """Ensures authentic ATS score calculation, realistic grading, and genuine skill extraction."""
         if not isinstance(data, dict):
             data = {}
 
-        # 1. Rubric Breakdown & Score Calculation
+        # 1. Normalize Summary
+        summary_val = ""
+        for s_key in ["summary", "executive_summary", "overview", "profile_summary", "abstract", "candidate_summary"]:
+            val = data.get(s_key)
+            if val and isinstance(val, str) and val.strip():
+                summary_val = val.strip()
+                break
+        if not summary_val:
+            summary_val = "Professional candidate evaluated against industry technical benchmarks and job requirements."
+        data["summary"] = summary_val
+
+        # 2. Safe Int Conversion & Rubric Score Calculation
+        def _safe_int(val: Any, default: int = 10) -> int:
+            try:
+                if val is None:
+                    return default
+                if isinstance(val, (int, float)):
+                    return int(val)
+                digits = re.findall(r'\d+', str(val))
+                if digits:
+                    return int(digits[0])
+            except Exception:
+                pass
+            return default
+
         breakdown = data.get("score_breakdown")
         if not isinstance(breakdown, dict):
             breakdown = {
-                "structure_formatting": 18,
-                "technical_skills": 26,
-                "quantifiable_results": 24,
-                "experience_fit": 17,
+                "structure_formatting": 10,
+                "technical_skills": 10,
+                "quantifiable_results": 5,
+                "experience_fit": 10,
             }
             data["score_breakdown"] = breakdown
 
-        sf = int(breakdown.get("structure_formatting", 0) or 18)
-        ts = int(breakdown.get("technical_skills", 0) or 25)
-        qr = int(breakdown.get("quantifiable_results", 0) or 24)
-        ef = int(breakdown.get("experience_fit", 0) or 17)
+        sf = max(0, min(20, _safe_int(breakdown.get("structure_formatting"), 10)))
+        ts = max(0, min(30, _safe_int(breakdown.get("technical_skills"), 10)))
+        qr = max(0, min(30, _safe_int(breakdown.get("quantifiable_results"), 5)))
+        ef = max(0, min(20, _safe_int(breakdown.get("experience_fit"), 10)))
 
         breakdown["structure_formatting"] = sf
         breakdown["technical_skills"] = ts
@@ -160,63 +191,71 @@ class AIService:
         breakdown["experience_fit"] = ef
 
         calc_score = sf + ts + qr + ef
-        data["ats_score"] = calc_score if calc_score > 0 else 85
+        data["ats_score"] = max(0, min(100, calc_score))
 
-        # 2. Robust Extraction for Technical, Soft, and Missing Skills
-        def _extract_list(primary_key: str, alt_keys: list[str], default_val: list[str]) -> list[str]:
-            val = data.get(primary_key)
-            if isinstance(val, list) and len(val) > 0:
-                return [str(item).strip() for item in val if str(item).strip()]
+        # 3. Genuine Skill & Insight Extraction with Flexible Type Normalization
+        def _to_list(val: Any) -> list[str]:
+            res = []
+            if isinstance(val, list):
+                for item in val:
+                    s_str = str(item).strip("•-* \t")
+                    if "," in s_str:
+                        res.extend([x.strip("•-* \t") for x in s_str.split(",") if x.strip("•-* \t")])
+                    elif s_str:
+                        res.append(s_str)
+                return res
+            elif isinstance(val, str) and val.strip():
+                items = [s.strip("•-* \t") for s in re.split(r"[\n,;]", val) if s.strip("•-* \t")]
+                return items
+            return []
+
+        def _extract_list(primary_key: str, alt_keys: list[str], fallback_msg: list[str]) -> list[str]:
+            lst = _to_list(data.get(primary_key))
+            if lst:
+                return lst
             for alt in alt_keys:
-                alt_val = data.get(alt)
-                if isinstance(alt_val, list) and len(alt_val) > 0:
-                    return [str(item).strip() for item in alt_val if str(item).strip()]
-            return default_val
+                lst = _to_list(data.get(alt))
+                if lst:
+                    return lst
+            return fallback_msg
 
         data["technical_skills"] = _extract_list(
             "technical_skills",
-            ["tech_skills", "hard_skills", "skills", "technologies"],
-            ["Python", "FastAPI", "REST APIs", "SQL", "Git", "Cloud Architecture"]
+            ["tech_skills", "hard_skills", "skills", "technologies", "skills_found"],
+            ["No distinct technical skills detected"]
         )
 
         data["soft_skills"] = _extract_list(
             "soft_skills",
             ["soft_skills_list", "interpersonal_skills", "leadership"],
-            ["Technical Leadership", "Agile Problem Solving", "Cross-Functional Communication"]
+            ["General Professional Experience"]
         )
 
         data["missing_skills"] = _extract_list(
             "missing_skills",
             ["recommended_skills", "gaps", "missing_keywords"],
-            ["Kubernetes", "Redis Caching", "CI/CD Pipeline Optimization"]
+            ["Industry-Standard Technical Frameworks"]
         )
 
         data["strengths"] = _extract_list(
             "strengths",
-            ["key_strengths", "positives"],
-            [
-                "Quantifiable metric-driven bullet points showcasing business impact",
-                "Strong backend system architecture and database design skills",
-                "Clear professional layout and structured sections"
-            ]
+            ["key_strengths", "positives", "pros"],
+            ["Legible document layout"]
         )
 
         data["weaknesses"] = _extract_list(
             "weaknesses",
-            ["areas_for_improvement", "gaps"],
-            [
-                "Could add container orchestration (Kubernetes) project experience",
-                "Highlight cloud certifications (e.g. AWS / Azure / GCP)"
-            ]
+            ["areas_for_improvement", "gaps", "cons"],
+            ["Lacks quantifiable metrics (% or numbers)", "Needs stronger action verbs"]
         )
 
         data["improvement_suggestions"] = _extract_list(
             "improvement_suggestions",
-            ["action_plan", "suggestions", "next_steps"],
+            ["action_plan", "suggestions", "next_steps", "recommendations"],
             [
-                "Add measurable KPIs (e.g., latency, throughput) to project achievements.",
-                "Include cloud architecture certifications in your profile header.",
-                "Tailor key bullet points to match target job description keywords."
+                "Add measurable KPIs (e.g., % growth, revenue, throughput) to your experience.",
+                "Include standard technical skills and tools matching target job descriptions.",
+                "Format bullet points using the STAR method starting with strong action verbs."
             ]
         )
 

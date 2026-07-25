@@ -43,6 +43,7 @@ class ResumeAnalyzer:
         job_description: str = "",
         user: dict[str, Any] | None = None,
         preferred_model: str | None = None,
+        **kwargs: Any,
     ) -> dict:
         """
         Orchestrates full resume parsing, AI evaluation, and database history persistence.
@@ -56,8 +57,8 @@ class ResumeAnalyzer:
             logger.error(f"Analysis failed at document parsing phase: {str(e)}")
             raise AnalysisError(f"Document parsing error: {str(e)}") from e
 
-        # Compute Content MD5 Hash for Caching
-        cache_raw = f"{extracted_text}:{target_role.strip().lower()}:{job_description.strip().lower()}"
+        # Compute Content MD5 Hash for Caching (v3 cache versioning)
+        cache_raw = f"v3:{extracted_text}:{target_role.strip().lower()}:{job_description.strip().lower()}"
         cache_key = hashlib.md5(cache_raw.encode("utf-8")).hexdigest()
 
         if cache_key in _ANALYSIS_CACHE:

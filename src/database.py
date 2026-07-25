@@ -12,14 +12,19 @@ from datetime import datetime, timedelta
 from typing import Any
 from src.logger import logger
 
-DB_PATH = os.path.join("data", "saas_resume_analyzer.db")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.environ.get("DATABASE_PATH", os.path.join(BASE_DIR, "data", "saas_resume_analyzer.db"))
 
 
 def _get_connection() -> sqlite3.Connection:
-    """Returns a SQLite connection with row factory enabled."""
+    """Returns a SQLite connection with WAL mode, extended timeout, and row factory enabled."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30.0)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+    except Exception as e:
+        logger.warning(f"Could not set WAL mode on SQLite: {str(e)}")
     return conn
 
 

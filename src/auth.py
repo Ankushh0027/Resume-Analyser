@@ -110,14 +110,6 @@ def render_login_screen() -> None:
                     else:
                         st.error(msg)
 
-        st.markdown("<hr style='border-color: rgba(255,255,255,0.1); margin: 20px 0;'>", unsafe_allow_html=True)
-        st.markdown("<div style='text-align: center; font-size: 0.85rem; color: #94A3B8; margin-bottom: 10px;'>Want to evaluate the app immediately?</div>", unsafe_allow_html=True)
-        
-        if st.button("⚡ Continue with Instant Demo Account", type="secondary", use_container_width=True, key="main_demo_btn"):
-            login_as_demo_user()
-            st.toast("Welcome to Demo Mode! Sample resume preloaded.", icon="⚡")
-            st.rerun()
-
         st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -164,7 +156,7 @@ def render_auth_header() -> bool:
                 st.rerun()
         return False
     else:
-        c1, c2, c3 = st.columns([6, 3, 3])
+        c1, c2 = st.columns([8, 2])
         with c1:
             st.markdown(
                 """
@@ -176,11 +168,6 @@ def render_auth_header() -> bool:
                 unsafe_allow_html=True,
             )
         with c2:
-            if st.button("⚡ Quick Demo Access", key="hdr_demo_btn", type="secondary", use_container_width=True):
-                login_as_demo_user()
-                st.toast("Signed in as Demo User!", icon="⚡")
-                st.rerun()
-        with c3:
             if st.button("🔑 Log In / Sign Up", key="hdr_login_btn", type="primary", use_container_width=True):
                 st.session_state["show_auth_portal"] = True
                 st.rerun()

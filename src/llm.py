@@ -44,47 +44,53 @@ class MultiProviderLLMClient:
         self.ai_service = AIService()
         self.model_name = model_name
 
-    def analyze(self, resume_text: str, target_role: str = "", job_description: str = "") -> dict:
+    def analyze(self, resume_text: str, target_role: str = "", job_description: str = "", *args: Any, **kwargs: Any) -> dict:
         """Analyzes resume text using server-side AIService."""
         from src.prompts import build_resume_analysis_prompt
         prompt = build_resume_analysis_prompt(resume_text, target_role, job_description)
+        pref_model = kwargs.get("preferred_model", self.model_name)
         try:
-            result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=self.model_name)
+            result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=pref_model)
             return result
         except AIServiceError as e:
             raise LLMError(str(e)) from e
 
-    def analyze_resume(self, resume_text: str, target_role: str = "", job_description: str = "") -> dict:
-        return self.analyze(resume_text, target_role, job_description)
+    def analyze_resume(self, resume_text: str, target_role: str = "", job_description: str = "", *args: Any, **kwargs: Any) -> dict:
+        return self.analyze(resume_text, target_role, job_description, *args, **kwargs)
 
-    def generate_cover_letter(self, resume_text: str, target_role: str = "", job_description: str = "") -> dict:
+    def generate_cover_letter(self, resume_text: str, target_role: str = "", job_description: str = "", *args: Any, **kwargs: Any) -> dict:
         from src.prompts import build_cover_letter_prompt
         prompt = build_cover_letter_prompt(resume_text, target_role, job_description)
-        result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=self.model_name)
+        pref_model = kwargs.get("preferred_model", self.model_name)
+        result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=pref_model)
         return result
 
-    def enhance_bullet_point(self, bullet_text: str, target_role: str = "") -> dict:
+    def enhance_bullet_point(self, bullet_text: str, target_role: str = "", *args: Any, **kwargs: Any) -> dict:
         from src.prompts import build_bullet_enhancer_prompt
         prompt = build_bullet_enhancer_prompt(bullet_text, target_role)
-        result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=self.model_name)
+        pref_model = kwargs.get("preferred_model", self.model_name)
+        result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=pref_model)
         return result
 
-    def predict_interview_questions(self, resume_text: str, target_role: str = "", job_description: str = "") -> dict:
+    def predict_interview_questions(self, resume_text: str, target_role: str = "", job_description: str = "", *args: Any, **kwargs: Any) -> dict:
         from src.prompts import build_interview_predictor_prompt
         prompt = build_interview_predictor_prompt(resume_text, target_role, job_description)
-        result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=self.model_name)
+        pref_model = kwargs.get("preferred_model", self.model_name)
+        result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=pref_model)
         return result
 
-    def generate_outreach(self, resume_text: str, target_role: str = "", company_name: str = "", job_description: str = "") -> dict:
+    def generate_outreach(self, resume_text: str, target_role: str = "", company_name: str = "", job_description: str = "", *args: Any, **kwargs: Any) -> dict:
         from src.prompts import build_outreach_prompt
         prompt = build_outreach_prompt(resume_text, target_role, company_name, job_description)
-        result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=self.model_name)
+        pref_model = kwargs.get("preferred_model", self.model_name)
+        result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=pref_model)
         return result
 
-    def estimate_salary(self, resume_text: str, target_role: str = "") -> dict:
+    def estimate_salary(self, resume_text: str, target_role: str = "", *args: Any, **kwargs: Any) -> dict:
         from src.prompts import build_salary_estimation_prompt
         prompt = build_salary_estimation_prompt(resume_text, target_role)
-        result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=self.model_name)
+        pref_model = kwargs.get("preferred_model", self.model_name)
+        result, _, _, _, _ = self.ai_service.execute_ai_completion(prompt, preferred_model=pref_model)
         return result
 
 

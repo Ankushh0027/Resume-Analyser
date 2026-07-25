@@ -6,15 +6,21 @@ Optimized for high token efficiency and structured output precision.
 
 from src.utils import clean_text
 
-SYSTEM_INSTRUCTION = """You are an expert ATS Recruiter. Analyze resumes objectively, extract skills, calculate ATS scores using a strict 100-pt rubric, and output strict valid JSON.
+SYSTEM_INSTRUCTION = """You are a rigorous, highly objective ATS Recruiter & Talent Audit Engine. Evaluate resumes with strict realism and 100% fairness. Do NOT give unearned high scores.
 
-RUBRIC (100 pts):
-- structure_formatting (0-20): Layout, readability, contact info, standard headings.
-- technical_skills (0-30): Languages, frameworks, tools, tech stack.
-- quantifiable_results (0-30): Metrics, %, numbers, business impact.
-- experience_fit (0-20): Work history, progression, education, certs.
+STRICT 100-PT RUBRIC SCORING GUIDELINES:
+- structure_formatting (0-20): Standard headings, clean contact info, readable structure. (0-8 if missing contact info or disorganized).
+- technical_skills (0-30): Hard technical skills, frameworks, tools explicitly present in resume text. (0-10 if vague or missing tech stack).
+- quantifiable_results (0-30): Measurable impact, percentages (%), metrics, $, numbers. (0-5 if resume lacks numbers or metrics!).
+- experience_fit (0-20): Career progression, relevant experience level for target role. (0-8 if weak or entry-level without relevance).
 
-CRITICAL: Calculate 'score_breakdown' FIRST. Set 'ats_score' to the exact sum of breakdown scores. Return raw JSON ONLY without markdown fences or preamble."""
+GRADING DISTRIBUTION CRITERIA:
+- 30-55: Weak / Unformatted / Missing metrics & skills.
+- 56-74: Average resume with basic skills but missing quantifiable impact.
+- 75-89: Strong candidate with proven metrics and clear tech stack.
+- 90-100: Top 1% Executive/Senior resume with outstanding STAR metrics.
+
+CRITICAL: Calculate 'score_breakdown' FIRST. Set 'ats_score' to the exact sum of breakdown scores. Return raw JSON ONLY without markdown fences."""
 
 
 def build_resume_analysis_prompt(
@@ -29,11 +35,15 @@ def build_resume_analysis_prompt(
     role_str = f"TARGET ROLE: {target_role.strip()}\n" if target_role and target_role.strip() else ""
     jd_str = f"JOB DESCRIPTION:\n{cleaned_jd}\n\n" if cleaned_jd else ""
 
-    return f"""Analyze resume text as expert ATS recruiter.
+    return f"""Analyze resume text as a rigorous, objective ATS Recruiter.
 {role_str}{jd_str}RESUME TEXT:
 {cleaned_resume}
 
-Evaluate 100-pt rubric: structure_formatting (0-20), technical_skills (0-30), quantifiable_results (0-30), experience_fit (0-20).
+Evaluate 100-pt rubric strictly based ONLY on the provided text:
+- structure_formatting (0-20)
+- technical_skills (0-30)
+- quantifiable_results (0-30): Give low points (0-5) if text has no numbers, %, or metrics!
+- experience_fit (0-20)
 
 Return valid JSON structure:
 {{
@@ -44,7 +54,7 @@ Return valid JSON structure:
     "experience_fit": <number 0 to 20>
   }},
   "ats_score": <exact sum of the 4 score_breakdown numbers above, 0 to 100>,
-  "summary": "<candidate summary>",
+  "summary": "<candidate summary based ONLY on resume text>",
   "technical_skills": ["<skill1>", "<skill2>"],
   "soft_skills": ["<skill1>", "<skill2>"],
   "missing_skills": ["<missing1>"],
@@ -57,7 +67,7 @@ Return valid JSON structure:
   "jd_tailored_suggestions": ["<suggestion1>"]
 }}
 
-CRITICAL: Calculate non-zero points for each rubric category. 'ats_score' MUST equal exact sum of breakdown numbers. Return ONLY raw JSON.""".strip()
+CRITICAL: Be completely objective and fair. 'ats_score' MUST equal exact sum of breakdown numbers. Extract ONLY skills explicitly present in resume. Return ONLY raw JSON.""".strip()
 
 
 def build_cover_letter_prompt(
