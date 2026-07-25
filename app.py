@@ -6,6 +6,11 @@ Zero User API Key Management • Automated Multi-Provider AI Engine • SQLite H
 
 import os
 from typing import Any
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 import streamlit as st
 from src.config import config
 from src.logger import logger
@@ -1760,10 +1765,10 @@ def main() -> None:
         with main_tabs[8]:
             render_admin_module()
 
-    # Mandatory Legal Policies for Razorpay & Payment Gateway Compliance
+    # Mandatory Legal Policies & Privacy Documentation
     st.markdown("---")
-    with st.expander("📜 Legal, Compliance & Payment Policies (Razorpay Verified)", expanded=False):
-        t_pol1, t_pol2, t_pol3, t_pol4 = st.tabs(["🔒 Privacy Policy", "📋 Terms & Conditions", "🔄 Refund & Cancellation", "📞 Contact Us"])
+    with st.expander("📜 Legal, Terms & Privacy Policies", expanded=False):
+        t_pol1, t_pol2, t_pol3 = st.tabs(["🔒 Privacy Policy", "📋 Terms of Service", "📞 Contact Support"])
         
         with t_pol1:
             st.markdown("""
@@ -1778,33 +1783,21 @@ def main() -> None:
 
         with t_pol2:
             st.markdown("""
-            ### Terms & Conditions
+            ### Terms of Service
             **Effective Date**: January 1, 2026
             
             By accessing AI Resume Analyzer & Career Intelligence Suite, you agree to the following terms:
-            - **Usage**: Free accounts include 3 monthly credits. Additional credit packs or subscriptions unlock advanced features.
+            - **Platform Access**: All users enjoy full, unlimited access to resume evaluation tools, ATS scoring, and career suite features.
             - **Digital Services**: Resume reports, cover letters, and career intelligence outputs are generated via server-side AI evaluation engines.
             - **Account Responsibility**: You are responsible for maintaining the confidentiality of your login credentials.
             """)
 
         with t_pol3:
             st.markdown("""
-            ### Refund & Cancellation Policy
-            **Effective Date**: January 1, 2026
-            
-            We aim for 100% customer satisfaction.
-            - **Digital Delivery**: Credit packs and Pro Passes are delivered digitally and instantly to your account upon successful payment.
-            - **Refund Requests**: If you experience technical issues or are dissatisfied with a credit purchase, refund requests submitted to `ankush@gmail.com` within 7 days will be processed to the original payment source within 5–7 business days.
-            - **Subscriptions**: You may cancel recurring Pro Monthly subscriptions at any time without penalty.
-            """)
-
-        with t_pol4:
-            st.markdown("""
-            ### Contact Us & Merchant Support
-            For payment inquiries, support, or billing assistance:
+            ### Contact & Support
+            For platform inquiries or technical assistance:
             - **Product**: AI Resume Analyzer & Career Intelligence Suite
-            - **Merchant Name**: Ankush (ResumeAI Platform)
-            - **Support Email**: `ankush@gmail.com` / `admin@resumeai.com`
+            - **Support Email**: `admin@resumeai.com`
             - **Support Hours**: Monday to Saturday, 9:00 AM – 6:00 PM IST
             """)
 
@@ -1814,7 +1807,7 @@ def main() -> None:
         <div class="footer" style="text-align: center; padding: 20px; color: #64748B; font-size: 0.85rem;">
             AI Resume Analyzer & Career Intelligence Suite ⚡ v2.0 Production Release<br/>
             Engineered with Python 3.13, Streamlit & Server-Side Multi-Provider AI Architecture<br/>
-            <span style="color:#94A3B8;">Razorpay Compliant Merchant Platform • All Rights Reserved © 2026</span>
+            <span style="color:#94A3B8;">All Rights Reserved © 2026</span>
         </div>
         """,
         unsafe_allow_html=True,
