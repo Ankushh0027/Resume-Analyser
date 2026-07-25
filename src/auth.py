@@ -86,12 +86,13 @@ def render_login_screen() -> None:
                 if not email or not password:
                     st.error("Please fill in both email and password.")
                 else:
-                    ok, msg = login_user(email, password)
-                    if ok:
-                        st.success(msg)
-                        st.rerun()
-                    else:
-                        st.error(msg)
+                    with st.spinner("Authenticating credentials..."):
+                        ok, msg = login_user(email, password)
+                        if ok:
+                            st.toast(msg, icon="🎉")
+                            st.rerun()
+                        else:
+                            st.error(msg)
 
         with tab_signup:
             st.markdown("### Create Free Account")
@@ -99,16 +100,19 @@ def render_login_screen() -> None:
             email = st.text_input("Email Address", key="main_signup_email", placeholder="alex@company.com")
             password = st.text_input("Password", type="password", key="main_signup_pwd", placeholder="Minimum 6 characters")
 
-            if st.button("✨ Create Free Account (3 Monthly Credits)", type="primary", use_container_width=True, key="main_signup_btn"):
+            if st.button("✨ Create Free Account", type="primary", use_container_width=True, key="main_signup_btn"):
                 if not name or not email or not password:
                     st.error("Please complete all registration fields.")
+                elif len(password.strip()) < 4:
+                    st.error("Password should be at least 4 characters long.")
                 else:
-                    ok, msg = signup_user(email, name, password)
-                    if ok:
-                        st.success(msg)
-                        st.rerun()
-                    else:
-                        st.error(msg)
+                    with st.spinner("Creating your account & setting up workspace..."):
+                        ok, msg = signup_user(email, name, password)
+                        if ok:
+                            st.toast(msg, icon="🎉")
+                            st.rerun()
+                        else:
+                            st.error(msg)
 
         st.markdown("</div>", unsafe_allow_html=True)
 
