@@ -26,7 +26,7 @@ def login_user(email: str, password: str) -> tuple[bool, str]:
     if user:
         st.session_state["user"] = user
         return True, f"Welcome back, {user['name']}!"
-    return False, "Invalid email or password."
+    return False, "Invalid email or password. If you haven't registered on this new database yet, please click 'Create Account' to sign up!"
 
 
 def signup_user(email: str, name: str, password: str) -> tuple[bool, str]:
@@ -75,7 +75,7 @@ def render_login_screen() -> None:
     c_center = st.columns([1, 2, 1])[1]
     with c_center:
         st.markdown('<div class="glass-card" style="padding: 28px;">', unsafe_allow_html=True)
-        tab_login, tab_signup = st.tabs(["🔑 Log In", "✨ Create Account"])
+        tab_login, tab_signup, tab_reset = st.tabs(["🔑 Log In", "✨ Create Account", "🔒 Forgot Password"])
 
         with tab_login:
             st.markdown("### Welcome Back")
@@ -111,6 +111,29 @@ def render_login_screen() -> None:
                         if ok:
                             st.toast(msg, icon="🎉")
                             st.rerun()
+                        else:
+                            st.error(msg)
+
+        with tab_reset:
+            st.markdown("### Reset Account Password")
+            reset_email = st.text_input("Registered Email Address", key="reset_email_input", placeholder="user@company.com")
+            new_pwd = st.text_input("New Password", type="password", key="reset_new_pwd", placeholder="••••••••")
+            confirm_pwd = st.text_input("Confirm New Password", type="password", key="reset_confirm_pwd", placeholder="••••••••")
+
+            if st.button("🔒 Reset Password", type="primary", use_container_width=True, key="reset_pwd_btn"):
+                if not reset_email or not new_pwd or not confirm_pwd:
+                    st.error("Please fill in all fields.")
+                elif new_pwd != confirm_pwd:
+                    st.error("New passwords do not match. Please verify your password entry.")
+                elif len(new_pwd.strip()) < 4:
+                    st.error("Password must be at least 4 characters long.")
+                else:
+                    from src.database import reset_user_password
+                    with st.spinner("Updating account credentials..."):
+                        ok, msg = reset_user_password(reset_email, new_pwd)
+                        if ok:
+                            st.toast("Password reset successfully!", icon="🎉")
+                            st.success(msg)
                         else:
                             st.error(msg)
 

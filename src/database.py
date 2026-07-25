@@ -12,6 +12,12 @@ from datetime import datetime, timedelta
 from typing import Any
 from src.logger import logger
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.environ.get("DATABASE_PATH", os.path.join(BASE_DIR, "data", "saas_resume_analyzer.db"))
 
@@ -232,7 +238,6 @@ def hash_password(password: str) -> str:
 
 def seed_demo_user() -> dict[str, Any]:
     """Creates default demo user (demo@resumeai.com / demo123) if not present."""
-    ensure_db_initialized()
     conn = _get_connection()
     cursor = conn.cursor()
 
@@ -356,8 +361,34 @@ def set_user_pro_plan(user_id: int) -> dict[str, Any]:
     return get_user_usage(user_id)
 
 
+def reset_user_password(email: str, new_password: str) -> tuple[bool, str]:
+    """Resets user password in database for verified registered email."""
+    ensure_db_initialized()
+    conn = _get_connection()
+    cursor = conn.cursor()
+
+    email_clean = email.strip().lower()
+    cursor.execute("SELECT id FROM users WHERE email = ?", (email_clean,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        return False, "No registered account found with this email address."
+
+    pwd_hash = hash_password(new_password)
+    cursor.execute(
+        "UPDATE users SET password_hash = ? WHERE email = ?",
+        (pwd_hash, email_clean),
+    )
+    conn.commit()
+    conn.close()
+    logger.info(f"Password reset successfully for email: {email_clean}")
+    return True, "Password updated successfully! You can now log in with your new password."
+
+
 def authenticate_user(email: str, password: str) -> dict[str, Any] | None:
     """Authenticates user with email and password."""
+    ensure_db_initialized()
     conn = _get_connection()
     cursor = conn.cursor()
 
@@ -571,10 +602,11 @@ def ensure_db_initialized() -> None:
     """Ensures database tables are initialized when Streamlit secrets are ready."""
     global _DB_INITIALIZED
     if not _DB_INITIALIZED:
+        _DB_INITIALIZED = True
         try:
             init_db()
-            _DB_INITIALIZED = True
         except Exception as e:
+            _DB_INITIALIZED = False
             logger.error(f"Lazy DB initialization warning: {str(e)}")
 
 

@@ -28,7 +28,7 @@ st.set_page_config(
     page_title="AI Resume Analyzer ⚡ SaaS",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # Inject Neural Flow-Field Animated Background
@@ -150,10 +150,12 @@ st.markdown(
         border: none !important;
     }
 
-    /* Hide Streamlit Default Chrome for Production Look */
-    #MainMenu, header, footer, [data-testid="stDecoration"], [data-testid="stHeader"] {
+    /* Hide Streamlit Default Chrome & Side Navigation Bar */
+    #MainMenu, header, footer, [data-testid="stDecoration"], [data-testid="stHeader"], [data-testid="stSidebar"], [data-testid="stSidebarNav"], [data-testid="collapsedControl"] {
+        display: none !important;
         visibility: hidden !important;
         height: 0px !important;
+        width: 0px !important;
         padding: 0px !important;
     }
 
@@ -1797,7 +1799,7 @@ def main() -> None:
             ### Contact & Support
             For platform inquiries or technical assistance:
             - **Product**: AI Resume Analyzer & Career Intelligence Suite
-            - **Support Email**: `admin@resumeai.com`
+            - **Support Email**: `autoflowai06@gmail.com`
             - **Support Hours**: Monday to Saturday, 9:00 AM – 6:00 PM IST
             """)
 
