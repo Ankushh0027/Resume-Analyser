@@ -236,6 +236,7 @@ def hash_password(password: str) -> str:
 
 def seed_demo_user() -> dict[str, Any]:
     """Creates default demo user (demo@resumeai.com / demo123) if not present."""
+    ensure_db_initialized()
     conn = _get_connection()
     cursor = conn.cursor()
 
@@ -271,6 +272,7 @@ def seed_demo_user() -> dict[str, Any]:
 
 def register_user(email: str, name: str, password: str) -> dict[str, Any]:
     """Registers a new user account and initializes free usage limits."""
+    ensure_db_initialized()
     conn = _get_connection()
     cursor = conn.cursor()
 
@@ -550,8 +552,23 @@ def _safe_val(row: Any, default: Any = 0) -> Any:
         return default
 
 
+_DB_INITIALIZED = False
+
+
+def ensure_db_initialized() -> None:
+    """Ensures database tables are initialized when Streamlit secrets are ready."""
+    global _DB_INITIALIZED
+    if not _DB_INITIALIZED:
+        try:
+            init_db()
+            _DB_INITIALIZED = True
+        except Exception as e:
+            logger.error(f"Lazy DB initialization warning: {str(e)}")
+
+
 def get_system_stats() -> dict[str, Any]:
     """Queries database for authentic system statistics."""
+    ensure_db_initialized()
     conn = _get_connection()
     cursor = conn.cursor()
 
@@ -576,6 +593,7 @@ def get_system_stats() -> dict[str, Any]:
 
 def get_all_users_admin() -> list[dict[str, Any]]:
     """Retrieves all registered users and their usage statistics for admin overview."""
+    ensure_db_initialized()
     conn = _get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -594,7 +612,3 @@ def get_all_users_admin() -> list[dict[str, Any]]:
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
-
-
-# Automatically run DB initialization on module load
-init_db()
