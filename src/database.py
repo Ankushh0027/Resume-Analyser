@@ -518,20 +518,33 @@ def get_user_analysis_history(user_id: int) -> list[dict[str, Any]]:
     return history
 
 
+def _safe_val(row: Any, default: Any = 0) -> Any:
+    """Extracts first column value safely from dict, tuple, or Row."""
+    if not row:
+        return default
+    if isinstance(row, dict):
+        vals = list(row.values())
+        return vals[0] if vals and vals[0] is not None else default
+    try:
+        return row[0] if row[0] is not None else default
+    except Exception:
+        return default
+
+
 def get_system_stats() -> dict[str, Any]:
-    """Queries live SQLite database for authentic system statistics."""
+    """Queries database for authentic system statistics."""
     conn = _get_connection()
     cursor = conn.cursor()
 
     cursor.execute("SELECT COUNT(*) FROM analysis_history")
-    total_audits = cursor.fetchone()[0]
+    total_audits = _safe_val(cursor.fetchone(), 0)
 
     cursor.execute("SELECT AVG(ats_score) FROM analysis_history WHERE ats_score > 0")
-    avg_score_row = cursor.fetchone()[0]
-    avg_score = round(avg_score_row, 1) if avg_score_row else None
+    avg_score_row = _safe_val(cursor.fetchone(), None)
+    avg_score = round(float(avg_score_row), 1) if avg_score_row is not None else None
 
     cursor.execute("SELECT COUNT(*) FROM users")
-    total_users = cursor.fetchone()[0]
+    total_users = _safe_val(cursor.fetchone(), 0)
 
     conn.close()
 
@@ -555,7 +568,7 @@ def get_all_users_admin() -> list[dict[str, Any]]:
         FROM users u
         LEFT JOIN usage_limits l ON u.id = l.user_id
         LEFT JOIN analysis_history h ON u.id = h.user_id
-        GROUP BY u.id
+        GROUP BY u.id, u.email, u.name, u.created_at, l.analysis_count, l.analysis_limit
         ORDER BY u.created_at DESC
         """
     )
