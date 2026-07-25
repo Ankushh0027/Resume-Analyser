@@ -47,25 +47,14 @@ class DBCursorWrapper:
     def __init__(self, raw_cursor, is_postgres: bool = False):
         self.raw_cursor = raw_cursor
         self.is_postgres = is_postgres
-        self.last_inserted_id = None
 
     def execute(self, sql: str, params: tuple | list = ()):
         query = sql
         if self.is_postgres:
             query = query.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
             query = query.replace("?", "%s")
-            if "INSERT INTO" in query and "RETURNING" not in query:
-                query += " RETURNING id"
         
         self.raw_cursor.execute(query, params)
-        if self.is_postgres and "INSERT INTO" in sql:
-            try:
-                res = self.raw_cursor.fetchone()
-                if res:
-                    row_dict = dict(res)
-                    self.last_inserted_id = list(row_dict.values())[0]
-            except Exception:
-                pass
         return self
 
     def fetchone(self):
@@ -82,9 +71,7 @@ class DBCursorWrapper:
 
     @property
     def lastrowid(self):
-        if self.is_postgres:
-            return self.last_inserted_id or 1
-        return self.raw_cursor.lastrowid
+        return getattr(self.raw_cursor, "lastrowid", None)
 
 
 class DBWrapper:
@@ -250,7 +237,9 @@ def seed_demo_user() -> dict[str, Any]:
             "INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)",
             (email, "Demo User", pwd_hash),
         )
-        user_id = cursor.lastrowid
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+        user_id = dict(user)["id"]
 
         reset_date = (datetime.now() + timedelta(days=30)).isoformat()
         cursor.execute(
@@ -262,12 +251,10 @@ def seed_demo_user() -> dict[str, Any]:
         )
         conn.commit()
 
-        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-        user = cursor.fetchone()
         logger.info("Seeded default demo user (demo@resumeai.com / demo123)")
 
     conn.close()
-    return dict(user)
+    return dict(user) if user else {}
 
 
 def register_user(email: str, name: str, password: str) -> dict[str, Any]:
@@ -287,7 +274,16 @@ def register_user(email: str, name: str, password: str) -> dict[str, Any]:
         "INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)",
         (email_clean, name.strip(), pwd_hash),
     )
-    user_id = cursor.lastrowid
+
+    # Fetch newly created user by unique email for 100% ID accuracy on PostgreSQL & SQLite
+    cursor.execute("SELECT * FROM users WHERE email = ?", (email_clean,))
+    user_row = cursor.fetchone()
+    if not user_row:
+        conn.close()
+        raise ValueError("Failed to create user account.")
+
+    user = dict(user_row)
+    user_id = user["id"]
 
     reset_date = (datetime.now() + timedelta(days=30)).isoformat()
     cursor.execute(
@@ -298,11 +294,8 @@ def register_user(email: str, name: str, password: str) -> dict[str, Any]:
         (user_id, reset_date),
     )
     conn.commit()
-
-    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-    user = cursor.fetchone()
     conn.close()
-    return dict(user)
+    return user
 
 
 def reset_user_usage(user_id: int) -> None:
