@@ -246,19 +246,24 @@ def seed_demo_user() -> dict[str, Any]:
             "INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)",
             (email, "Demo User", pwd_hash),
         )
+        conn.commit()
+
         cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
         user = cursor.fetchone()
         user_id = dict(user)["id"]
 
         reset_date = (datetime.now() + timedelta(days=30)).isoformat()
-        cursor.execute(
-            """
-            INSERT INTO usage_limits (user_id, analysis_count, analysis_limit, reset_date, plan_tier, extra_credits)
-            VALUES (?, 0, 3, ?, 'free', 0)
-            """,
-            (user_id, reset_date),
-        )
-        conn.commit()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO usage_limits (user_id, analysis_count, analysis_limit, reset_date, plan_tier, extra_credits)
+                VALUES (?, 0, 3, ?, 'free', 0)
+                """,
+                (user_id, reset_date),
+            )
+            conn.commit()
+        except Exception:
+            pass
 
         logger.info("Seeded default demo user (demo@resumeai.com / demo123)")
 
@@ -283,6 +288,7 @@ def register_user(email: str, name: str, password: str) -> dict[str, Any]:
         "INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)",
         (email_clean, name.strip(), pwd_hash),
     )
+    conn.commit()
 
     # Fetch newly created user by unique email for 100% ID accuracy on PostgreSQL & SQLite
     cursor.execute("SELECT * FROM users WHERE email = ?", (email_clean,))
@@ -295,14 +301,18 @@ def register_user(email: str, name: str, password: str) -> dict[str, Any]:
     user_id = user["id"]
 
     reset_date = (datetime.now() + timedelta(days=30)).isoformat()
-    cursor.execute(
-        """
-        INSERT INTO usage_limits (user_id, analysis_count, analysis_limit, reset_date, plan_tier, extra_credits)
-        VALUES (?, 0, 3, ?, 'free', 0)
-        """,
-        (user_id, reset_date),
-    )
-    conn.commit()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO usage_limits (user_id, analysis_count, analysis_limit, reset_date, plan_tier, extra_credits)
+            VALUES (?, 0, 3, ?, 'free', 0)
+            """,
+            (user_id, reset_date),
+        )
+        conn.commit()
+    except Exception:
+        pass
+
     conn.close()
     return user
 
