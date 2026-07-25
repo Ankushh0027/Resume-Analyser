@@ -16,8 +16,117 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.environ.get("DATABASE_PATH", os.path.join(BASE_DIR, "data", "saas_resume_analyzer.db"))
 
 
-def _get_connection() -> sqlite3.Connection:
-    """Returns a SQLite connection with WAL mode, extended timeout, and row factory enabled."""
+def _get_cloud_db_url() -> str:
+    """Checks st.secrets and os.environ for SUPABASE_DB_URL, DATABASE_URL, or POSTGRES_URL."""
+    raw_url = ""
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and st.secrets:
+            for k in ["SUPABASE_DB_URL", "DATABASE_URL", "POSTGRES_URL"]:
+                if k in st.secrets and st.secrets[k]:
+                    raw_url = str(st.secrets[k]).strip()
+                    break
+    except Exception:
+        pass
+    if not raw_url:
+        for k in ["SUPABASE_DB_URL", "DATABASE_URL", "POSTGRES_URL"]:
+            val = os.getenv(k, "").strip()
+            if val:
+                raw_url = val
+                break
+
+    if raw_url:
+        # Sanitize bracketed passwords from Supabase string (e.g., postgres:[pwd]@host)
+        raw_url = raw_url.replace(":[", ":").replace("]@", "@")
+    return raw_url
+
+
+class DBCursorWrapper:
+    """Normalizes query execution and dictionary row outputs across SQLite and PostgreSQL."""
+
+    def __init__(self, raw_cursor, is_postgres: bool = False):
+        self.raw_cursor = raw_cursor
+        self.is_postgres = is_postgres
+        self.last_inserted_id = None
+
+    def execute(self, sql: str, params: tuple | list = ()):
+        query = sql
+        if self.is_postgres:
+            query = query.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+            query = query.replace("?", "%s")
+            if "INSERT INTO" in query and "RETURNING" not in query:
+                query += " RETURNING id"
+        
+        self.raw_cursor.execute(query, params)
+        if self.is_postgres and "INSERT INTO" in sql:
+            try:
+                res = self.raw_cursor.fetchone()
+                if res:
+                    row_dict = dict(res)
+                    self.last_inserted_id = list(row_dict.values())[0]
+            except Exception:
+                pass
+        return self
+
+    def fetchone(self):
+        res = self.raw_cursor.fetchone()
+        if res:
+            return dict(res)
+        return None
+
+    def fetchall(self):
+        res = self.raw_cursor.fetchall()
+        if res:
+            return [dict(r) for r in res]
+        return []
+
+    @property
+    def lastrowid(self):
+        if self.is_postgres:
+            return self.last_inserted_id or 1
+        return self.raw_cursor.lastrowid
+
+
+class DBWrapper:
+    """Unified Database Connection Wrapper supporting both SQLite and PostgreSQL/Supabase."""
+
+    def __init__(self, raw_conn, is_postgres: bool = False):
+        self.raw_conn = raw_conn
+        self.is_postgres = is_postgres
+
+    def cursor(self):
+        return DBCursorWrapper(self.raw_conn.cursor(), self.is_postgres)
+
+    def commit(self):
+        if not self.is_postgres:
+            try:
+                self.raw_conn.commit()
+            except Exception:
+                pass
+
+    def close(self):
+        try:
+            self.raw_conn.close()
+        except Exception:
+            pass
+
+
+def _get_connection() -> DBWrapper:
+    """Returns a unified DBWrapper around SQLite or Cloud PostgreSQL/Supabase."""
+    db_url = _get_cloud_db_url()
+    if db_url.startswith(("postgres://", "postgresql://")):
+        try:
+            import psycopg2
+            import psycopg2.extras
+            if db_url.startswith("postgres://"):
+                db_url = db_url.replace("postgres://", "postgresql://", 1)
+            conn = psycopg2.connect(db_url, cursor_factory=psycopg2.extras.RealDictCursor)
+            conn.autocommit = True
+            logger.info("Connected to Persistent Cloud PostgreSQL Database.")
+            return DBWrapper(conn, is_postgres=True)
+        except Exception as e:
+            logger.error(f"Could not connect to Cloud PostgreSQL DB: {str(e)}. Falling back to local SQLite.")
+
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30.0)
     conn.row_factory = sqlite3.Row
@@ -25,7 +134,7 @@ def _get_connection() -> sqlite3.Connection:
         conn.execute("PRAGMA journal_mode=WAL;")
     except Exception as e:
         logger.warning(f"Could not set WAL mode on SQLite: {str(e)}")
-    return conn
+    return DBWrapper(conn, is_postgres=False)
 
 
 def init_db() -> None:
@@ -83,6 +192,16 @@ def init_db() -> None:
         """
     )
 
+    # Migration: Add plan_tier and extra_credits if missing
+    try:
+        cursor.execute("ALTER TABLE usage_limits ADD COLUMN plan_tier TEXT DEFAULT 'free'")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE usage_limits ADD COLUMN extra_credits INTEGER DEFAULT 0")
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
     logger.info("Database schema initialized successfully.")
@@ -116,8 +235,8 @@ def seed_demo_user() -> dict[str, Any]:
         reset_date = (datetime.now() + timedelta(days=30)).isoformat()
         cursor.execute(
             """
-            INSERT INTO usage_limits (user_id, analysis_count, analysis_limit, reset_date)
-            VALUES (?, 0, 3, ?)
+            INSERT INTO usage_limits (user_id, analysis_count, analysis_limit, reset_date, plan_tier, extra_credits)
+            VALUES (?, 0, 3, ?, 'free', 0)
             """,
             (user_id, reset_date),
         )
@@ -152,8 +271,8 @@ def register_user(email: str, name: str, password: str) -> dict[str, Any]:
     reset_date = (datetime.now() + timedelta(days=30)).isoformat()
     cursor.execute(
         """
-        INSERT INTO usage_limits (user_id, analysis_count, analysis_limit, reset_date)
-        VALUES (?, 0, 3, ?)
+        INSERT INTO usage_limits (user_id, analysis_count, analysis_limit, reset_date, plan_tier, extra_credits)
+        VALUES (?, 0, 3, ?, 'free', 0)
         """,
         (user_id, reset_date),
     )
@@ -169,10 +288,39 @@ def reset_user_usage(user_id: int) -> None:
     """Resets user analysis_count back to 0 for testing/demo purposes."""
     conn = _get_connection()
     cursor = conn.cursor()
-    cursor.execute("UPDATE usage_limits SET analysis_count = 0 WHERE user_id = ?", (user_id,))
+    cursor.execute("UPDATE usage_limits SET analysis_count = 0, extra_credits = 0, plan_tier = 'free' WHERE user_id = ?", (user_id,))
     conn.commit()
     conn.close()
     logger.info(f"Reset usage count to 0 for user ID #{user_id}")
+
+
+def add_user_credits(user_id: int, credits_to_add: int) -> dict[str, Any]:
+    """Adds purchased credit pack to user account."""
+    conn = _get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE usage_limits SET extra_credits = COALESCE(extra_credits, 0) + ?, plan_tier = 'starter' WHERE user_id = ?",
+        (credits_to_add, user_id),
+    )
+    conn.commit()
+    conn.close()
+    logger.info(f"Added {credits_to_add} extra credits to user ID #{user_id}")
+    return get_user_usage(user_id)
+
+
+def set_user_pro_plan(user_id: int) -> dict[str, Any]:
+    """Upgrades user to Pro Monthly Pass (Unlimited)."""
+    conn = _get_connection()
+    cursor = conn.cursor()
+    reset_date = (datetime.now() + timedelta(days=30)).isoformat()
+    cursor.execute(
+        "UPDATE usage_limits SET plan_tier = 'pro_monthly', reset_date = ? WHERE user_id = ?",
+        (reset_date, user_id),
+    )
+    conn.commit()
+    conn.close()
+    logger.info(f"Upgraded user ID #{user_id} to Pro Monthly Pass")
+    return get_user_usage(user_id)
 
 
 def authenticate_user(email: str, password: str) -> dict[str, Any] | None:
@@ -207,8 +355,8 @@ def get_user_usage(user_id: int) -> dict[str, Any]:
         reset_date = (datetime.now() + timedelta(days=30)).isoformat()
         cursor.execute(
             """
-            INSERT INTO usage_limits (user_id, analysis_count, analysis_limit, reset_date)
-            VALUES (?, 0, 3, ?)
+            INSERT INTO usage_limits (user_id, analysis_count, analysis_limit, reset_date, plan_tier, extra_credits)
+            VALUES (?, 0, 3, ?, 'free', 0)
             """,
             (user_id, reset_date),
         )
@@ -240,25 +388,49 @@ def get_user_usage(user_id: int) -> dict[str, Any]:
 
 def check_and_increment_usage(user_id: int) -> tuple[bool, int, int, str]:
     """
-    Checks if user is within free monthly analysis limit.
-    Increments count if allowed.
+    Checks user credit tier and remaining balance.
+    Consumes credits or checks free limits.
 
     Returns:
-        tuple[bool, int, int, str]: (can_proceed, count, limit, message)
+        tuple[bool, int, int, str]: (can_proceed, remaining_or_count, limit, message)
     """
     conn = _get_connection()
     cursor = conn.cursor()
 
     usage = get_user_usage(user_id)
-    count = usage["analysis_count"]
-    limit = usage["analysis_limit"]
+    plan_tier = usage.get("plan_tier", "free")
+    extra_credits = usage.get("extra_credits", 0) or 0
+    count = usage.get("analysis_count", 0) or 0
+    limit = usage.get("analysis_limit", 3) or 3
+    now_str = datetime.now().isoformat()
 
+    # 1. Pro Unlimited Plan
+    if plan_tier == "pro_monthly":
+        cursor.execute(
+            "UPDATE usage_limits SET last_analysis_at = ? WHERE user_id = ?",
+            (now_str, user_id),
+        )
+        conn.commit()
+        conn.close()
+        return True, 999, 999, "Pro Unlimited Active"
+
+    # 2. Use Extra Purchased Credits
+    if extra_credits > 0:
+        new_extra = extra_credits - 1
+        cursor.execute(
+            "UPDATE usage_limits SET extra_credits = ?, last_analysis_at = ? WHERE user_id = ?",
+            (new_extra, now_str, user_id),
+        )
+        conn.commit()
+        conn.close()
+        return True, new_extra, limit, "Credit Used"
+
+    # 3. Standard Free Quota
     if count >= limit:
         conn.close()
-        return False, count, limit, f"You've reached your free monthly limit of {limit} resume analyses."
+        return False, count, limit, f"You've used all {limit} free monthly credits."
 
     new_count = count + 1
-    now_str = datetime.now().isoformat()
     cursor.execute(
         "UPDATE usage_limits SET analysis_count = ?, last_analysis_at = ? WHERE user_id = ?",
         (new_count, now_str, user_id),

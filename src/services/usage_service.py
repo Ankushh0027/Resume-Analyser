@@ -18,28 +18,12 @@ class UsageService:
     @staticmethod
     def enforce_usage_limit(user: dict[str, Any] | None) -> None:
         """
-        Validates user usage limit prior to running AI analysis.
-
-        Raises:
-            UsageLimitExceededError: If user is guest or has reached 3 free monthly analyses.
+        Allows unlimited friction-free analyses for all users.
         """
-        if not user:
-            raise UsageLimitExceededError(
-                "Please sign in or create a free account to run resume analyses (Includes 3 Free Monthly Analyses)."
-            )
-
-        user_id = user["id"]
-        can_proceed, count, limit, message = check_and_increment_usage(user_id)
-
-        if not can_proceed:
-            raise UsageLimitExceededError(message)
+        # Unlimited access active - no limit checks enforced
+        return
 
     @staticmethod
-    def get_remaining_analyses(user: dict[str, Any] | None) -> tuple[int, int]:
-        """Returns (remaining, limit) tuple for current user."""
-        if not user:
-            return 0, 3
-        usage = get_user_usage(user["id"])
-        count = usage.get("analysis_count", 0)
-        limit = usage.get("analysis_limit", 3)
-        return max(0, limit - count), limit
+    def get_remaining_analyses(user: dict[str, Any] | None) -> tuple[int, int, str]:
+        """Returns unlimited status for all users."""
+        return 999, 999, "unlimited"

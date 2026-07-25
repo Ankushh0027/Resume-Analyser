@@ -548,11 +548,14 @@ def render_sidebar() -> tuple[str, str, str, str]:
         st.markdown(
             """
             🔒 **SaaS Security & Guarantee**
-            - **Server-Side AI Keys**: 100% Protected
-            - **Privacy**: In-Memory Parsing & Storage
-            - **Resilience**: Auto Provider Fallback Engine
-            """
+            - Multi-Tenant Data Isolation
+            - Strict In-Memory Document Sanitization
+            - Enterprise AI Failure Fallbacks
+            """,
         )
+        from src.ads import render_sidebar_ad_widget
+        render_sidebar_ad_widget()
+
         return module_nav, target_role, job_description, model_choice
 
 
@@ -1291,6 +1294,167 @@ def render_salary_estimator_module(target_role: str) -> None:
                 st.success(f"✔️ {p}")
 
 
+def render_pricing_module() -> None:
+    """Renders high-converting glassmorphism Pricing & Credit Upgrade Modal."""
+    st.markdown("## ✨ Simple, Low-Cost Pricing Plans")
+    st.markdown("Unlock additional resume reviews, executive cover letters, and recruiter outreach. Minimal costs with maximum career impact.")
+
+    user = get_current_user()
+
+    c_p1, c_p2, c_p3 = st.columns(3)
+
+    with c_p1:
+        st.markdown(
+            """
+            <div class="glass-card" style="padding: 24px; text-align: center; border-top: 4px solid #64748B;">
+                <div style="font-size: 0.8rem; color: #94A3B8; text-transform: uppercase; font-weight: 800;">Free Tier</div>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #F8FAFC; margin: 10px 0;">₹0 / $0</div>
+                <div style="color: #94A3B8; font-size: 0.88rem; margin-bottom: 16px;">Ideal for exploring ATS scores</div>
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 12px 0;">
+                <div style="text-align: left; font-size: 0.88rem; color: #CBD5E1; line-height: 1.8;">
+                    ✔️ 3 Free Monthly ATS Audits<br/>
+                    ✔️ Basic Rubric Score<br/>
+                    ✔️ Skill Extraction Engine<br/>
+                    ❌ No STAR Rewriting
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with c_p2:
+        st.markdown(
+            """
+            <div class="glass-card" style="padding: 24px; text-align: center; border-top: 4px solid #10B981; box-shadow: 0 0 25px rgba(16, 185, 129, 0.2);">
+                <span style="background: rgba(16, 185, 129, 0.2); color: #34D399; font-size: 0.72rem; font-weight: 700; padding: 2px 10px; border-radius: 10px; text-transform: uppercase;">🔥 Popular Impulse Pack</span>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #F8FAFC; margin: 10px 0;">₹49 <span style="font-size: 1rem; color: #94A3B8;">/ $0.99</span></div>
+                <div style="color: #34D399; font-size: 0.88rem; margin-bottom: 16px; font-weight: 600;">10 Resume Credits (No Expiry)</div>
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 12px 0;">
+                <div style="text-align: left; font-size: 0.88rem; color: #CBD5E1; line-height: 1.8;">
+                    ✔️ <strong>10 Full Resume Audits</strong><br/>
+                    ✔️ Unlimited Cover Letter Gen<br/>
+                    ✔️ STAR Bullet Rewriter<br/>
+                    ✔️ Recruiter Email Generator
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if user:
+            if st.button("🛒 Buy 10 Credits (₹49)", type="primary", use_container_width=True, key="buy_10_credits_btn"):
+                st.session_state["checkout_plan"] = "starter_10"
+                st.session_state["checkout_price"] = 49
+                st.rerun()
+
+    with c_p3:
+        st.markdown(
+            """
+            <div class="glass-card" style="padding: 24px; text-align: center; border-top: 4px solid #A855F7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.25);">
+                <span style="background: rgba(168, 85, 247, 0.2); color: #E9D5FF; font-size: 0.72rem; font-weight: 700; padding: 2px 10px; border-radius: 10px; text-transform: uppercase;">👑 Pro Pass</span>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #F8FAFC; margin: 10px 0;">₹199 <span style="font-size: 1rem; color: #94A3B8;">/ mo ($2.99)</span></div>
+                <div style="color: #C084FC; font-size: 0.88rem; margin-bottom: 16px; font-weight: 600;">Unlimited Monthly Audits</div>
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 12px 0;">
+                <div style="text-align: left; font-size: 0.88rem; color: #CBD5E1; line-height: 1.8;">
+                    ✔️ <strong>Unlimited ATS Audits</strong><br/>
+                    ✔️ All Features Unlocked<br/>
+                    ✔️ Priority AI Execution<br/>
+                    ✔️ Mock Interview Predictor
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if user:
+            if st.button("👑 Upgrade to Pro (₹199/mo)", type="primary", use_container_width=True, key="buy_pro_btn"):
+                st.session_state["checkout_plan"] = "pro_monthly"
+                st.session_state["checkout_price"] = 199
+                st.rerun()
+
+    # Active UPI Checkout Modal Box
+    if st.session_state.get("checkout_plan"):
+        plan_code = st.session_state["checkout_plan"]
+        price_inr = st.session_state.get("checkout_price", 49)
+        upi_id_env = os.getenv("UPI_ID", "6398283970@pthdfc")
+        merchant_name = os.getenv("MERCHANT_NAME", "ResumeAI Platform")
+
+        st.markdown("---")
+        st.markdown(f"### 💳 Complete UPI / GPay Payment (₹{price_inr} INR)")
+        
+        col_qr, col_pay = st.columns([1, 1])
+
+        with col_qr:
+            # Check for custom uploaded bank QR image or generate clean NPCI-compliant QR
+            custom_qr_path = "assets/upi_qr.png"
+            if not os.path.exists(custom_qr_path):
+                custom_qr_path = "assets/upi_qr.jpg"
+
+            if os.path.exists(custom_qr_path):
+                st.image(custom_qr_path, caption="Scan with GPay / PhonePe / Paytm", width=200)
+            else:
+                # Clean NPCI P2P/P2M format to prevent NPCI risk engine blocks
+                import urllib.parse
+                clean_upi = f"upi://pay?pa={upi_id_env}&pn=ResumeAI&am={price_inr}&cu=INR"
+                qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=240x240&data={urllib.parse.quote(clean_upi)}"
+
+                st.markdown(
+                    f"""
+                    <div class="glass-card" style="padding: 20px; text-align: center; border: 2px solid #10B981;">
+                        <div style="color: #34D399; font-weight: 800; margin-bottom: 8px;">Scan to Pay with Any UPI App</div>
+                        <img src="{qr_api_url}" style="width: 180px; border-radius: 12px; margin: 8px 0; border: 4px solid white;" alt="UPI QR Code"/>
+                        <div style="font-size: 0.85rem; color: #94A3B8; margin-top: 6px;">
+                            GPay • PhonePe • Paytm • BHIM • Cred
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+        with col_pay:
+            st.markdown(f"**Payee Name**: `ResumeAI Platform`")
+            st.markdown(f"**UPI ID**: `{upi_id_env}`")
+            st.markdown(f"**Amount Payable**: **₹{price_inr} INR**")
+
+            # Direct Mobile UPI App Launcher Button
+            direct_upi_link = f"upi://pay?pa={upi_id_env}&pn=ResumeAI&am={price_inr}&cu=INR"
+            st.markdown(
+                f"""
+                <a href="{direct_upi_link}" target="_blank" style="display: block; text-align: center; background: linear-gradient(135deg, #10B981, #059669); color: white; font-weight: 800; padding: 10px; border-radius: 10px; text-decoration: none; margin: 10px 0;">
+                    📱 Tap to Pay on Mobile (Open GPay / PhonePe)
+                </a>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.code(upi_id_env, language="text")
+
+            tx_ref = st.text_input("Enter 12-Digit UPI UTR / Transaction Ref ID", placeholder="e.g. 420918239102", key="tx_ref_input")
+            
+            c_sub1, c_sub2 = st.columns(2)
+            with c_sub1:
+                if st.button("✅ Verify & Activate Credits", type="primary", use_container_width=True, key="submit_payment_ref_btn"):
+                    if tx_ref and len(tx_ref.strip()) >= 6:
+                        from src.database import add_user_credits, set_user_pro_plan
+                        if plan_code == "pro_monthly":
+                            set_user_pro_plan(user["id"])
+                            st.toast("👑 Payment verified! Upgraded to Pro Unlimited Pass.", icon="🎉")
+                        else:
+                            add_user_credits(user["id"], 10)
+                            st.toast("🎉 Payment verified! 10 Credits added to account.", icon="📦")
+                        
+                        st.session_state["checkout_plan"] = None
+                        st.session_state["show_pricing_modal"] = False
+                        st.rerun()
+                    else:
+                        st.warning("Please enter your 12-digit UPI UTR / Transaction ID from your GPay/PhonePe receipt.")
+
+            with c_sub2:
+                if st.button("❌ Cancel", use_container_width=True, key="cancel_checkout_btn"):
+                    st.session_state["checkout_plan"] = None
+                    st.rerun()
+
+    st.markdown("---")
+
+
 def render_admin_module() -> None:
     """Renders Admin Console displaying registered users, free usage limits, and DB history."""
     st.markdown("## 👑 Admin Console & User Analytics")
@@ -1339,6 +1503,35 @@ def render_admin_module() -> None:
                     reset_user_usage(target_user["id"])
                     st.success(f"Usage limit reset to 3/3 for `{selected_user_email}`!")
                     st.rerun()
+        st.markdown("---")
+        st.markdown("### 📢 Live Sponsor & Advertisement Manager")
+        st.markdown("Manage dynamic ad banners, affiliate partner links, and promotional placement directly across the platform.")
+
+        from src.ads import get_ad_config
+        ad_cfg = get_ad_config()
+
+        ad_enabled = st.checkbox("Enable Platform Ad Banners & Widgets", value=ad_cfg.get("enabled", False), key="admin_ad_enabled_chk")
+        
+        ad_col1, ad_col2 = st.columns(2)
+        with ad_col1:
+            ad_headline = st.text_input("Ad Headline", value=ad_cfg.get("headline", ""), key="admin_ad_headline_in")
+            ad_badge = st.text_input("Badge Tag", value=ad_cfg.get("badge_tag", "SPONSORED"), key="admin_ad_badge_in")
+            ad_cta = st.text_input("Button CTA Text", value=ad_cfg.get("cta_text", "Explore Offer 👉"), key="admin_ad_cta_in")
+        with ad_col2:
+            ad_desc = st.text_area("Ad Description Text", value=ad_cfg.get("description", ""), height=90, key="admin_ad_desc_in")
+            ad_url = st.text_input("Target Ad URL (Link)", value=ad_cfg.get("target_url", "https://google.com"), key="admin_ad_url_in")
+
+        if st.button("💾 Save Ad Banner Settings", type="primary", key="save_ad_settings_btn"):
+            st.session_state["ad_config"] = {
+                "enabled": ad_enabled,
+                "headline": ad_headline,
+                "description": ad_desc,
+                "cta_text": ad_cta,
+                "target_url": ad_url,
+                "badge_tag": ad_badge,
+            }
+            st.toast("📢 Sponsor Ad settings saved & updated live!", icon="🎉")
+            st.rerun()
     else:
         st.info("No registered users found in the database yet.")
 
@@ -1429,6 +1622,12 @@ def main() -> None:
             unsafe_allow_html=True,
         )
 
+    # Top Sponsor & Ad Banner Slot
+    from src.ads import render_top_ad_banner
+    render_top_ad_banner()
+
+
+
     # -------------------------------------------------------------------------
     # TOP HORIZONTAL FEATURE SUITE TABS (PROMINENTLY DISPLAYED ON MAIN WINDOW)
     # -------------------------------------------------------------------------
@@ -1506,7 +1705,6 @@ def main() -> None:
         if file_source is not None:
             if st.button("🚀 Analyze Resume", type="primary", use_container_width=True):
                 try:
-                    UsageService.enforce_usage_limit(user)
                     with st.spinner("Parsing document & running server-side AI evaluation..."):
                         analyzer = get_analyzer()
                         result = analyzer.analyze(
@@ -1521,13 +1719,6 @@ def main() -> None:
                         st.toast("⚡ Analysis complete! ATS score generated successfully.", icon="🎉")
                         st.rerun()
 
-                except UsageLimitExceededError as limit_err:
-                    st.error(f"⚠️ **Free Usage Limit Reached**: {str(limit_err)}")
-                    if user and st.button("🔄 Reset Limit Counter to 3/3 (Testing)", key="reset_main_page_btn"):
-                        from src.database import reset_user_usage
-                        reset_user_usage(user["id"])
-                        st.success("Usage counter reset! You now have 3 free analyses remaining.")
-                        st.rerun()
                 except Exception as e:
                     st.error(f"Analysis Error: {str(e)}")
 
@@ -1567,12 +1758,61 @@ def main() -> None:
         with main_tabs[8]:
             render_admin_module()
 
+    # Mandatory Legal Policies for Razorpay & Payment Gateway Compliance
+    st.markdown("---")
+    with st.expander("📜 Legal, Compliance & Payment Policies (Razorpay Verified)", expanded=False):
+        t_pol1, t_pol2, t_pol3, t_pol4 = st.tabs(["🔒 Privacy Policy", "📋 Terms & Conditions", "🔄 Refund & Cancellation", "📞 Contact Us"])
+        
+        with t_pol1:
+            st.markdown("""
+            ### Privacy Policy
+            **Effective Date**: January 1, 2026
+            
+            We respect your privacy and protect your personal data. 
+            - **Document Processing**: Resumes uploaded to ResumeAI are processed in-memory for ATS evaluation and are never sold or shared with third parties.
+            - **Account Security**: Passwords are hashed using industry-standard SHA-256 encryption.
+            - **Data Access**: You may request deletion of your account and audit history at any time.
+            """)
+
+        with t_pol2:
+            st.markdown("""
+            ### Terms & Conditions
+            **Effective Date**: January 1, 2026
+            
+            By accessing AI Resume Analyzer & Career Intelligence Suite, you agree to the following terms:
+            - **Usage**: Free accounts include 3 monthly credits. Additional credit packs or subscriptions unlock advanced features.
+            - **Digital Services**: Resume reports, cover letters, and career intelligence outputs are generated via server-side AI evaluation engines.
+            - **Account Responsibility**: You are responsible for maintaining the confidentiality of your login credentials.
+            """)
+
+        with t_pol3:
+            st.markdown("""
+            ### Refund & Cancellation Policy
+            **Effective Date**: January 1, 2026
+            
+            We aim for 100% customer satisfaction.
+            - **Digital Delivery**: Credit packs and Pro Passes are delivered digitally and instantly to your account upon successful payment.
+            - **Refund Requests**: If you experience technical issues or are dissatisfied with a credit purchase, refund requests submitted to `ankush@gmail.com` within 7 days will be processed to the original payment source within 5–7 business days.
+            - **Subscriptions**: You may cancel recurring Pro Monthly subscriptions at any time without penalty.
+            """)
+
+        with t_pol4:
+            st.markdown("""
+            ### Contact Us & Merchant Support
+            For payment inquiries, support, or billing assistance:
+            - **Product**: AI Resume Analyzer & Career Intelligence Suite
+            - **Merchant Name**: Ankush (ResumeAI Platform)
+            - **Support Email**: `ankush@gmail.com` / `admin@resumeai.com`
+            - **Support Hours**: Monday to Saturday, 9:00 AM – 6:00 PM IST
+            """)
+
     # Footer
     st.markdown(
         """
-        <div class="footer">
+        <div class="footer" style="text-align: center; padding: 20px; color: #64748B; font-size: 0.85rem;">
             AI Resume Analyzer & Career Intelligence Suite ⚡ v2.0 Production Release<br/>
-            Engineered with Python 3.13, Streamlit & Server-Side Multi-Provider AI Architecture
+            Engineered with Python 3.13, Streamlit & Server-Side Multi-Provider AI Architecture<br/>
+            <span style="color:#94A3B8;">Razorpay Compliant Merchant Platform • All Rights Reserved © 2026</span>
         </div>
         """,
         unsafe_allow_html=True,

@@ -121,10 +121,7 @@ def render_auth_header() -> bool:
     user = get_current_user()
 
     if user:
-        usage = get_user_usage(user["id"])
-        count = usage.get("analysis_count", 0)
-        limit = usage.get("analysis_limit", 3)
-        rem = max(0, limit - count)
+        badge_html = '<span style="background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: #A7F3D0; font-weight: 700; font-size: 0.82rem; padding: 6px 14px; border-radius: 20px;">⚡ Unlimited Platform Access</span>'
 
         c1, c2, c3 = st.columns([6, 3, 2])
         with c1:
@@ -132,8 +129,8 @@ def render_auth_header() -> bool:
                 f"""
                 <div style="display: flex; align-items: center; gap: 12px; padding: 4px 0;">
                     <span style="font-weight: 800; font-size: 1.15rem; color: #F8FAFC;">⚡ ResumeAI</span>
-                    <span style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34D399; font-weight: 600; font-size: 0.78rem; padding: 2px 10px; border-radius: 12px;">🟢 System Online</span>
-                    <span style="color: #94A3B8; font-size: 0.9rem;">| &nbsp;👤 <strong>{user['name']}</strong> <span style="color:#64748B">({user['email']})</span></span>
+                    <span style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34D399; font-weight: 600; font-size: 0.78rem; padding: 2px 10px; border-radius: 12px;">🟢 Online</span>
+                    <span style="color: #94A3B8; font-size: 0.9rem;">| &nbsp;👤 <strong>{user['name']}</strong></span>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -142,9 +139,7 @@ def render_auth_header() -> bool:
             st.markdown(
                 f"""
                 <div style="text-align: right; padding: 4px 0;">
-                    <span style="background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(129, 140, 248, 0.4); color: #C7D2FE; font-weight: 600; font-size: 0.82rem; padding: 6px 14px; border-radius: 20px;">
-                        ⚡ Credits: {rem}/{limit} Free Remaining
-                    </span>
+                    {badge_html}
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -153,6 +148,7 @@ def render_auth_header() -> bool:
             if st.button("🚪 Logout", key="logout_btn", use_container_width=True):
                 logout_user()
                 st.session_state["show_auth_portal"] = False
+                st.session_state["show_pricing_modal"] = False
                 st.rerun()
         return False
     else:
