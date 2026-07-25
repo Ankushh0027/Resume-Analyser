@@ -16,6 +16,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.environ.get("DATABASE_PATH", os.path.join(BASE_DIR, "data", "saas_resume_analyzer.db"))
 
 
+LAST_DB_ERROR = None
+
+
 def _get_cloud_db_url() -> str:
     """Checks st.secrets and os.environ for SUPABASE_DB_URL, DATABASE_URL, or POSTGRES_URL."""
     raw_url = ""
@@ -24,13 +27,13 @@ def _get_cloud_db_url() -> str:
         if hasattr(st, "secrets") and st.secrets:
             for k in ["SUPABASE_DB_URL", "DATABASE_URL", "POSTGRES_URL"]:
                 if k in st.secrets and st.secrets[k]:
-                    raw_url = str(st.secrets[k]).strip()
+                    raw_url = str(st.secrets[k]).strip().strip("'\"")
                     break
     except Exception:
         pass
     if not raw_url:
         for k in ["SUPABASE_DB_URL", "DATABASE_URL", "POSTGRES_URL"]:
-            val = os.getenv(k, "").strip()
+            val = os.getenv(k, "").strip().strip("'\"")
             if val:
                 raw_url = val
                 break
@@ -100,6 +103,7 @@ class DBWrapper:
 
 def _get_connection() -> DBWrapper:
     """Returns a unified DBWrapper around SQLite or Cloud PostgreSQL/Supabase."""
+    global LAST_DB_ERROR
     db_url = _get_cloud_db_url()
     if db_url.startswith(("postgres://", "postgresql://")):
         try:
@@ -114,9 +118,11 @@ def _get_connection() -> DBWrapper:
                 connect_timeout=10,
             )
             conn.autocommit = True
+            LAST_DB_ERROR = None
             logger.info("Connected to Persistent Cloud PostgreSQL Database.")
             return DBWrapper(conn, is_postgres=True)
         except Exception as e:
+            LAST_DB_ERROR = str(e)
             logger.error(f"Could not connect to Cloud PostgreSQL DB: {str(e)}. Falling back to local SQLite.")
 
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
@@ -138,9 +144,12 @@ def get_db_type_info() -> dict[str, Any]:
             if conn.is_postgres:
                 conn.close()
                 return {"is_cloud": True, "type": "Supabase PostgreSQL Cloud DB", "status": "Connected (SSL Mode)"}
+            else:
+                err_msg = LAST_DB_ERROR or "Unknown connection error"
+                return {"is_cloud": False, "type": "Local SQLite Fallback", "status": f"Cloud Error: {err_msg}"}
         except Exception as e:
             return {"is_cloud": False, "type": "Local SQLite Fallback", "status": f"Cloud Error: {str(e)}"}
-    return {"is_cloud": False, "type": "Local SQLite Database", "status": "Active (Local File)"}
+    return {"is_cloud": False, "type": "Local SQLite Database", "status": "No DATABASE_URL found in Secrets"}
 
 
 def init_db() -> None:
